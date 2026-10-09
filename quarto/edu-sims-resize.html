@@ -1,0 +1,16 @@
+<!-- edu_sims: 시뮬레이터 iframe의 높이를 내용에 맞춰 자동으로 조절합니다.
+     Quarto의 include-after-body로 한 번만 넣으면 그 페이지의 모든 edu_sims iframe에 적용됩니다.
+     시뮬레이터(?embed=1)가 내용 높이가 바뀔 때마다 {type: 'edu-sims:height', height} 메시지를 보냅니다. -->
+<script>
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.type !== 'edu-sims:height' || typeof d.height !== 'number') return;
+    // 메시지를 보낸 창이 이 페이지의 iframe일 때만, 그 iframe 높이만 바꿈
+    var frames = document.getElementsByTagName('iframe');
+    for (var i = 0; i < frames.length; i++) {
+      if (frames[i].contentWindow === e.source) {
+        frames[i].style.height = Math.min(Math.max(Math.ceil(d.height), 100), 10000) + 'px';
+      }
+    }
+  });
+</script>
