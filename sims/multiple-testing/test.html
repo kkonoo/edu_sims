@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>테스트 · 다중검정과 FDR</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <script src="../../shared/test.js"></script>
+  <script src="model.js"></script>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question">테스트: 다중검정과 FDR</h1>
+    <p>계산 부분(<code>model.js</code>)만 검사합니다. 파일을 더블클릭해 열어도 됩니다.
+      <a href="./">시뮬레이터로 돌아가기</a></p>
+    <div id="test-results"></div>
+  </main>
+
+  <script>
+    EduTest.run(function (T) {
+      const fmt = EduTest.fmt;
+
+      /* ---------------------------------------------------------------
+       * 1. p값 계산
+       * 기댓값: R 4.5.1 (webR)에서 아래 코드를 실행한 결과
+       *   z <- c(0, 0.5, 1, qnorm(0.975), qnorm(0.995), qnorm(0.9995), 4, 5, 6, 8, 10)
+       *   sprintf("%.17g", 2 * pnorm(-abs(z)))
+       * --------------------------------------------------------------- */
+      T.section('p값 계산: 양측 p = 2·(1 − Φ(|z|))');
+      const P_REF = [
+        [0, 1],
+        [0.5, 0.61707507745197387],
+        [1, 0.31731050786291409],
+        [1.9599639845400536, 0.050000000000000065], // qnorm(0.975)
+        [2.5758293035488999, 0.010000000000000021], // qnorm(0.995)
+        [3.2905267314919255, 0.0009999999999998903], // qnorm(0.9995)
+        [4, 6.3342483666239849e-05],
+        [5, 5.7330314375838782e-07],
+        [6, 1.9731752900753962e-09],
+        [8, 1.244192114854357e-15],
+        [10, 1.5239706048321054e-23],
+      ];
+      for (const [z, p] of P_REF) T.near('z = ' + z, MT.pTwoSided(z), p, 1e-12);
+      T.check('부호를 바꿔도 같은 값 (z = ±1.96)', MT.pTwoSided(-1.96) === MT.pTwoSided(1.96));
+
+      /* ---------------------------------------------------------------
+       * 2. BH 손계산 예제 (m = 5, q = 0.05)
+       *   정렬한 p:   0.004   0.025   0.028   0.2    0.5
+       *   기준 i/m·q: 0.01    0.02    0.03    0.04   0.05
+       *   통과?        ✔       ✘       ✔       ✘      ✘    → 통과하는 가장 큰 i = 3
+       *   → 0.025는 자기 기준(0.02)을 넘지만, 뒤의 0.028이 통과하므로 함께 기각 (단계 상향)
+       *   보정 p = min_{j≥i} (m/j)·p(j):
+       *     0.5·5/5 = 0.5, 0.2·5/4 = 0.25, 0.028·5/3 = 0.04667, min(0.025·5/2 = 0.0625, 0.04667) = 0.04667, 0.004·5 = 0.02
+       * --------------------------------------------------------------- */
+      T.section('BH: 손계산 예제 (m = 5, q = 0.05)');
+      const HAND_P = [0.5, 0.028, 0.004, 0.2, 0.025];
+      const HAND_REJECT = [0, 1, 1, 0, 1];
+      const HAND_ADJ = [0.5, 0.028 * 5 / 3, 0.02, 0.25, 0.028 * 5 / 3];
+      const hand = MT.rejectBH(HAND_P, 0.05);
+      T.check('기각 개수 k = 3', hand.k === 3, '실제 k = ' + hand.k);
+      T.check('기각된 검정: 0.028, 0.004, 0.025 (자기 기준을 넘는 0.025도 기각)',
+        HAND_REJECT.every((r, i) => hand.reject[i] === r), '실제 [' + Array.from(hand.reject).join(', ') + ']');
+      const handAdj = MT.adjustBH(HAND_P);
+      HAND_ADJ.forEach((e, i) => T.near('보정 p, p = ' + HAND_P[i], handAdj[i], e, 1e-12));
+
+      /* ---------------------------------------------------------------
+       * 3. R의 p.adjust(method = "BH")와 비교
+       * 기댓값: R 4.5.1 (webR)에서 sprintf("%.17g", p.adjust(p, method = "BH")) 실행 결과
+       * --------------------------------------------------------------- */
+      T.section('BH: R p.adjust(p, method = "BH")와 같은 값');
+      const R_CASES = [
+        {
+          name: 'Benjamini & Hochberg (1995) 논문의 15개 p값',
+          p: [0.0001, 0.0004, 0.0019, 0.0095, 0.0201, 0.0278, 0.0298, 0.0344, 0.0459, 0.3240, 0.4262, 0.5719, 0.6528, 0.7590, 1.0000],
+          r: [0.0015, 0.0030000000000000001, 0.0094999999999999998, 0.035624999999999997, 0.060299999999999999,
+            0.063857142857142862, 0.063857142857142862, 0.064500000000000002, 0.076500000000000012, 0.48599999999999999,
+            0.58118181818181813, 0.71487499999999993, 0.75323076923076926, 0.81321428571428567, 1],
+          k: 4, // 논문: q = 0.05에서 작은 4개 기각
+        },
+        {
+          name: '같은 값(동률)이 섞이고 정렬되지 않은 p값',
+          p: [0.04, 0.01, 0.30, 0.01, 0.04, 0.002, 0.9, 0.04],
+          r: [0.05333333333333333, 0.026666666666666665, 0.3428571428571428, 0.026666666666666665,
+            0.05333333333333333, 0.016, 0.90000000000000002, 0.05333333333333333],
+          k: 3,
+        },
+        {
+          name: '손계산 예제',
+          p: HAND_P,
+          r: [0.5, 0.046666666666666669, 0.02, 0.25, 0.046666666666666669],
+          k: 3,
+        },
+      ];
+      for (const c of R_CASES) {
+        const adj = MT.adjustBH(c.p);
+        const worst = Math.max(...c.r.map((e, i) => Math.abs(adj[i] - e) / e));
+        T.check(c.name + ': 보정 p ' + c.p.length + '개 모두 일치', worst <= 1e-12,
+          '가장 큰 상대오차 ' + worst.toExponential(1) + ' · 실제 [' + Array.from(adj, (x) => fmt(x)).join(', ') + ']');
+        const k = MT.rejectBH(c.p, 0.05).k;
+        T.check(c.name + ': q = 0.05에서 기각 ' + c.k + '개', k === c.k, '실제 ' + k + '개');
+      }
+
+      T.section('BH: 단계 상향 기각 ⇔ 보정 p ≤ q');
+      {
+        const rng = EduSim.rng(2024);
+        let mismatches = 0, total = 0;
+        for (let rep = 0; rep < 50; rep++) {
+          const m = 5 + Math.floor(rng.uniform() * 500);
+          // 작은 p가 섞이도록 일부는 u³
+          const p = Array.from({ length: m }, () => (rng.uniform() < 0.3 ? rng.uniform() ** 3 : rng.uniform()));
+          const adj = MT.adjustBH(p);
+          for (const q of [0.01, 0.05, 0.1, 0.2]) {
+            const rej = MT.rejectBH(p, q).reject;
+            for (let i = 0; i < m; i++) { total++; if (rej[i] !== (adj[i] <= q ? 1 : 0)) mismatches++; }
+          }
+        }
+        T.check('무작위 p값 50세트 × q 4가지: 두 방식의 판정이 모두 같음', mismatches === 0,
+          '비교 ' + total.toLocaleString() + '건 중 불일치 ' + mismatches + '건');
+      }
+
+      /* ---------------------------------------------------------------
+       * 4. 몬테카를로: 500번 반복 (시드 1–500 고정 → 매번 같은 결과)
+       * 허용 범위는 몬테카를로 오차의 3배(3 SE)
+       * --------------------------------------------------------------- */
+      const REPS = 500;
+      function monteCarlo(m, pi1, effect, method, alpha) {
+        const out = [];
+        for (let seed = 1; seed <= REPS; seed++) {
+          const sm = MT.simulate(m, pi1, effect, seed);
+          out.push(MT.confusion(sm.isAlt, MT.decide(sm.p, method, alpha)));
+        }
+        return out;
+      }
+      const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+      const se = (xs) => { const mu = mean(xs); return Math.sqrt(xs.reduce((a, b) => a + (b - mu) ** 2, 0) / (xs.length - 1) / xs.length); };
+
+      T.section('몬테카를로 (' + REPS + '회, 시드 1–' + REPS + ')');
+      {
+        const m = 1000, alpha = 0.05;
+        const fp = monteCarlo(m, 0, 0, 'none', alpha).map((c) => c.FP);
+        const expect = alpha * m, s = Math.sqrt(m * alpha * (1 - alpha) / REPS);
+        const avg = mean(fp);
+        T.check('π₁ = 0, 보정 없음 (m = 1000, α = 0.05): 평균 위양성 ≈ α·m = 50', Math.abs(avg - expect) <= 3 * s,
+          '평균 ' + avg.toFixed(2) + ' · 기대 ' + expect + ' · 허용 ±' + (3 * s).toFixed(2) + ' (3 SE)');
+      }
+      for (const pi1 of [0, 0.2]) {
+        const m = 1000, q = 0.1, effect = 2.5;
+        const fdp = monteCarlo(m, pi1, effect, 'bh', q).map((c) => c.fdp);
+        const avg = mean(fdp), s = se(fdp), theory = (1 - pi1) * q;
+        T.check('BH, π₁ = ' + pi1 + ' (m = 1000, q = 0.1): 평균 관찰 FDR ≤ q', avg <= q + 3 * s,
+          '평균 ' + avg.toFixed(4) + ' · q = ' + q + ' · 허용 +' + (3 * s).toFixed(4) + ' (3 SE)');
+        // "≤ q"만으로는 지나치게 보수적인 잘못된 구현(예: Bonferroni)도 통과하므로 이론값과도 비교
+        T.check('BH, π₁ = ' + pi1 + ': 평균 관찰 FDR ≈ 이론값 π₀·q = ' + fmt(theory), Math.abs(avg - theory) <= 3 * s,
+          '평균 ' + avg.toFixed(4) + ' · 이론 ' + fmt(theory) + ' · 허용 ±' + (3 * s).toFixed(4) + ' (3 SE)');
+      }
+      {
+        const m = 1000, alpha = 0.05;
+        const any = monteCarlo(m, 0, 0, 'bonf', alpha).map((c) => (c.FP >= 1 ? 1 : 0));
+        const rate = mean(any), s = Math.sqrt(alpha * (1 - alpha) / REPS);
+        const theory = 1 - (1 - alpha / m) ** m;
+        T.check('Bonferroni, π₁ = 0 (m = 1000, α = 0.05): 위양성 1개 이상 비율 ≤ α', rate <= alpha + 3 * s,
+          '비율 ' + rate.toFixed(3) + ' · α = ' + alpha + ' · 허용 +' + (3 * s).toFixed(3) + ' (3 SE) · 이론값 ' + theory.toFixed(4));
+      }
+
+      /* ---------------------------------------------------------------
+       * 5. 시드 재현성
+       * --------------------------------------------------------------- */
+      T.section('같은 시드 → 같은 결과');
+      {
+        const a = EduSim.rng(12345), b = EduSim.rng(12345), c = EduSim.rng(12346);
+        let same = true, differ = false;
+        for (let i = 0; i < 10000; i++) {
+          const x = a.normal(), y = b.normal(), z = c.normal();
+          if (x !== y) same = false;
+          if (x !== z) differ = true;
+        }
+        T.check('EduSim.rng: 같은 시드면 정규난수 10,000개가 똑같음', same);
+        T.check('EduSim.rng: 시드가 다르면 다른 수열', differ);
+
+        const first = MT.simulate(2000, 0.1, 3, 777);
+        const copy = { z: Array.from(first.z), isAlt: Array.from(first.isAlt) };
+        const other = MT.simulate(2000, 0.1, 3, 778); // 내부 캐시를 다른 시드로 덮어씀
+        const again = MT.simulate(2000, 0.1, 3, 777);
+        T.check('MT.simulate: 다른 시드를 거친 뒤 같은 시드로 다시 돌려도 z와 효과 유무가 똑같음',
+          copy.z.every((v, i) => v === again.z[i]) && copy.isAlt.every((v, i) => v === again.isAlt[i]));
+        T.check('MT.simulate: 시드가 다르면 z가 다름', copy.z.some((v, i) => v !== other.z[i]));
+        const c1 = MT.confusion(first.isAlt, MT.decide(first.p, 'bh', 0.05));
+        const c2 = MT.confusion(again.isAlt, MT.decide(again.p, 'bh', 0.05));
+        T.check('같은 시드면 2×2 표도 같음', ['TP', 'FP', 'FN', 'TN'].every((k) => c1[k] === c2[k]),
+          'TP ' + c1.TP + ', FP ' + c1.FP + ', FN ' + c1.FN + ', TN ' + c1.TN);
+        T.check('효과 있는 검정 수 = round(π₁·m) = 200', again.m1 === 200 && again.isAlt.reduce((s, v) => s + v, 0) === 200);
+      }
+    });
+  </script>
+</body>
+</html>

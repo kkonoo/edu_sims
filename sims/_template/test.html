@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>테스트 · 템플릿</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <script src="../../shared/test.js"></script>
+  <!-- 계산 코드를 model.js로 따로 뺐다면 여기서 불러 검사합니다 (sims/multiple-testing/test.html 참고) -->
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question">테스트: 템플릿</h1>
+    <p><a href="./">시뮬레이터로 돌아가기</a></p>
+    <div id="test-results"></div>
+  </main>
+
+  <script>
+    EduTest.run(function (T) {
+      T.section('예시');
+      const a = EduSim.rng(1), b = EduSim.rng(1);
+      T.check('같은 시드면 같은 난수', a.normal() === b.normal());
+
+      const rng = EduSim.rng(1);
+      const xs = Array.from({ length: 100000 }, () => rng.normal());
+      const mean = xs.reduce((s, x) => s + x, 0) / xs.length;
+      T.check('N(0, 1) 10만 개의 평균 ≈ 0 (±3 SE)', Math.abs(mean) <= 3 / Math.sqrt(xs.length), '평균 ' + mean.toFixed(5));
+    });
+  </script>
+</body>
+</html>
