@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>edu_sims</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <!-- 차트: Observable Plot (d3가 먼저 있어야 함). 버전 고정 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/dist/plot.umd.min.js"></script>
+</head>
+<body>
+  <main class="sim">
+    <!-- 1. 질문 한 줄 -->
+    <h1 class="sim-question" data-t="question"></h1>
+
+    <!-- 2. 조작 패널 + 그래프 -->
+    <div class="sim-layout">
+      <section class="card panel" aria-labelledby="panel-title">
+        <h2 class="card-title" id="panel-title" data-t="panel"></h2>
+
+        <div class="ctrl">
+          <div class="ctrl-head">
+            <label for="n" data-t="n"></label>
+            <output for="n" data-out="n"></output>
+          </div>
+          <input type="range" id="n" data-param="n">
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="k" data-t="meanLabel"></div><div class="v" id="mean"></div></div>
+        </div>
+
+        <div class="seed-row">
+          <button type="button" class="btn" data-action="reroll" data-t="reroll"></button>
+          <span class="seed" data-seed></span>
+        </div>
+      </section>
+
+      <div class="sim-figs">
+        <figure class="card fig">
+          <figcaption class="card-title" data-t="figTitle"></figcaption>
+          <div id="chart"></div>
+          <div class="legend">
+            <span class="key"><span class="sw" style="background: var(--c1)"></span><span data-t="legendDraws"></span></span>
+            <span class="key"><span class="ln" style="border-color: var(--c2)"></span><span data-t="legendMean"></span></span>
+            <span class="key"><span class="ln dash" style="border-color: var(--ink-2)"></span><span data-t="legendTrue"></span></span>
+          </div>
+        </figure>
+      </div>
+    </div>
+
+    <!-- 3. 이렇게 해 보세요 -->
+    <section class="card tasks">
+      <h2 data-t="tasksTitle"></h2>
+      <ol>
+        <li data-t-html="task1"></li>
+        <li data-t-html="task2"></li>
+      </ol>
+    </section>
+
+    <!-- 4. 접을 수 있는 설명 -->
+    <details class="card explain">
+      <summary data-t="explainTitle"></summary>
+      <div data-t-html="explain"></div>
+    </details>
+  </main>
+
+  <script src="text.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
