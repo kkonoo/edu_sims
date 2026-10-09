@@ -16,6 +16,7 @@
   --c2: #eb6834; /* 주황 */
   --c3: #1baf7a; /* 청록 */
   --c4: #4a3aa7; /* 보라 */
+  --c-neutral: #74737c; /* 구분 없이 합친 값 */
 
   --radius: 14px;
   --gap: 1rem;
@@ -30,6 +31,7 @@
 html.big { font-size: 137.5%; }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -185,6 +187,9 @@ fieldset.seg { border: 1px solid var(--line); }
 .legend .sw { width: 0.8rem; height: 0.8rem; border-radius: 3px; display: inline-block; }
 .legend .ln { width: 1.4rem; height: 0; border-top: 2px solid; display: inline-block; }
 .legend .ln.dash { border-top-style: dashed; }
+.legend .ln.dot-line { border-top-style: dotted; }
+.legend .dot { width: 0.65rem; height: 0.65rem; border-radius: 50%; border: 1.5px solid var(--ink-2); display: inline-block; }
+.legend .dot.fill { background: var(--ink-2); }
 
 /* ---------- 관찰 과제 · 설명 ---------- */
 .tasks ol { margin: 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: 0.4rem; }
