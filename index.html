@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>edu_sims</title>
+  <link rel="stylesheet" href="shared/style.css">
+  <script src="shared/sim.js"></script>
+  <style>
+    .intro { margin: 0; color: var(--ink-2); max-width: 46rem; }
+    .gallery { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); margin-top: 0.5rem; }
+    .sim-card {
+      position: relative; display: flex; flex-direction: column; gap: 0.6rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sim-card:hover { border-color: var(--line-strong); box-shadow: 0 4px 16px var(--ring); }
+    .sim-card:focus-within { outline: 2px solid var(--c1); outline-offset: 2px; }
+    .sim-card .accent { height: 4px; border-radius: 2px; width: 2.5rem; background: linear-gradient(90deg, var(--c1), var(--c2)); }
+    .sim-card h2 { margin: 0; font-size: 1.2rem; line-height: 1.35; }
+    .sim-card h2 a { color: var(--ink); text-decoration: none; }
+    .sim-card h2 a:focus-visible { outline: none; }
+    /* 카드 전체를 누를 수 있게 (교재 칩은 따로 누를 수 있도록 위에 올림) */
+    .sim-card h2 a::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
+    .sim-card .q { margin: 0; color: var(--ink-2); flex: 1; }
+    .sim-card .open { font-weight: 650; color: var(--c1); font-size: 0.9rem; }
+    .books { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; font-size: 0.8rem; }
+    .books .label { color: var(--muted); margin-right: 0.15rem; }
+    .books a {
+      position: relative; z-index: 1; text-decoration: none; color: var(--ink-2);
+      background: var(--page); border: 1px solid var(--line); border-radius: 999px; padding: 0.1rem 0.6rem;
+    }
+    .books a:hover { border-color: var(--line-strong); color: var(--ink); }
+  </style>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question" data-t="heading"></h1>
+    <p class="intro" data-t="intro"></p>
+    <div class="gallery" id="gallery"></div>
+  </main>
+
+  <script src="gallery.js"></script>
+  <script>
+    EduSim.create({
+      home: './',
+      seed: false,
+      text: {
+        ko: {
+          title: '시뮬레이터 모음',
+          heading: '수업용 인터랙티브 시뮬레이터',
+          intro: '슬라이더를 움직이면 결과가 바로 바뀌는 시뮬레이터들입니다. 교재에 끼워 넣거나 수업 중에 바로 띄워 쓰세요.',
+          usedIn: '쓰이는 교재',
+          open: '열기 →',
+        },
+        en: {
+          title: 'Simulators',
+          heading: 'Interactive simulators for teaching',
+          intro: 'Move a slider and the result changes right away. Embed them in a textbook or open them in class.',
+          usedIn: 'Used in',
+          open: 'Open →',
+        },
+      },
+      render(state, sim) {
+        const lang = EduSim.lang;
+        const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        document.getElementById('gallery').innerHTML = SIMS.map((s) => {
+          const href = 'sims/' + s.id + '/' + (lang === 'en' ? '?lang=en' : '');
+          const books = s.books.map((b) => '<a href="' + BOOK_URL(b) + '">' + esc(BOOKS[b].name) + '</a>').join('');
+          return '<article class="card sim-card">' +
+            '<div class="accent"></div>' +
+            '<h2><a href="' + href + '">' + esc(s.title[lang]) + '</a></h2>' +
+            '<p class="q">' + esc(s.question[lang]) + '</p>' +
+            '<div class="books"><span class="label">' + esc(sim.t('usedIn')) + '</span>' + books + '</div>' +
+            '<span class="open" aria-hidden="true">' + esc(sim.t('open')) + '</span>' +
+            '</article>';
+        }).join('');
+      },
+    });
+  </script>
+</body>
+</html>
