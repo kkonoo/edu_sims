@@ -82,7 +82,7 @@ function drawPlane(sim, s, C, ch) {
   const W = Math.min(EduSim.contentWidth(wrap.parentElement), Math.round(rem * (bx === by ? 30 : 40)));
   const iw = W - ml - mr, ih = Math.round((iw * by) / bx); // 가로세로 같은 축척 → 제안이 원 모양 그대로
   const H = ih + mt + mb;
-  const key = [s.target, s.rho, W, rem, EduSim.lang].join(' ');
+  const key = [s.target, s.rho, W, rem, EduSim.lang, EduSim.theme].join(' '); // 테마가 바뀌면 등고선 색과 쌓아 둔 점도 다시
   if (planeBg.key !== key) {
     // 등고선: 봉우리 밀도의 e^(−r²/2)배 (r = 1, 2, 3 → 정규라면 마할라노비스 거리 1, 2, 3)
     const peak = tg.kind === 'norm' ? tg.density(0, 0) : tg.density(MC.A, 0);
@@ -171,7 +171,7 @@ function drawTrace(sim, s, C, ch) {
   const W = EduSim.contentWidth(wrap.parentElement), H = Math.round(rem * 10);
   const ml = Math.round(rem * 2.4), mr = Math.round(rem * 0.9), mt = Math.round(rem * 1.5), mb = Math.round(rem * 2.3);
   const n = s.n, xmax = XMAX.find((v) => v >= n) || MC.N, from = MC.burnFrom(n), bx = tg.box[0];
-  const key = [W, rem, xmax, bx, EduSim.lang].join(' ');
+  const key = [W, rem, xmax, bx, EduSim.lang, EduSim.theme].join(' ');
   if (traceBg.key !== key) {
     const plot = Plot.plot({
       width: W, height: H, marginLeft: ml, marginRight: mr, marginTop: mt, marginBottom: mb,

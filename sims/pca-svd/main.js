@@ -19,16 +19,16 @@ $('heat').innerHTML = '<span></span><div class="band" id="heat-band"></div>' +
 $('type-keys').innerHTML = '<span data-t="legendTypes"></span>' +
   PS.TYPES.map((t, i) => `<span class="sw" style="background: var(${BLOCK_COLOR[i]})"></span><span data-t="type${t}"></span>`).join('');
 
-/* ---------- 색표: 값 → 회색(높을수록 진함), 부호 있는 값 → 파랑(−)·흰색·주황(+) ---------- */
+/* ---------- 색표: 값 → 회색(높을수록 글자색에 가깝게: 라이트면 진하게, 다크면 밝게), 부호 있는 값 → 파랑(−)·바탕색·주황(+) ---------- */
 let LUT = null;
 function luts() {
-  if (LUT) return LUT;
+  if (LUT && LUT.theme === EduSim.theme) return LUT; // 테마가 바뀌면 다시 만듦
   const css = EduSim.css;
   const table = (colors) => {
     const f = d3.piecewise(d3.interpolateLab, colors);
     return Array.from({ length: 256 }, (_, i) => { const c = d3.rgb(f(i / 255)); return [c.r, c.g, c.b]; });
   };
-  LUT = { seq: table(['#fbfbfa', css('--ink')]), div: table([css('--c1'), css('--surface'), css('--c2')]) };
+  LUT = { theme: EduSim.theme, seq: table([css('--surface'), css('--ink')]), div: table([css('--c1'), css('--surface'), css('--c2')]) };
   const grad = (t) => 'linear-gradient(to right, ' + [0, 64, 128, 191, 255].map((i) => `rgb(${t[i].join(',')})`).join(', ') + ')';
   ['ramp-seq', 'ramp-seq2'].forEach((id) => { $(id).style.background = grad(LUT.seq); });
   ['ramp-div', 'ramp-div2'].forEach((id) => { $(id).style.background = grad(LUT.div); });

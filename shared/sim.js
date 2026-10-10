@@ -2,7 +2,10 @@
  * edu_sims 공통 모듈 — 일반 <script>로 <head>에서 불러 씁니다(전역 EduSim 하나만 만듦).
  * ES 모듈을 쓰지 않는 이유: 파일을 더블클릭(file://)으로 열어도 동작하게 하려고.
  *
- *  URL 공통 파라미터: lang=ko|en, embed=1(헤더·푸터 숨김 + 부모에 높이 알림), big=1(글자 크게), seed=정수
+ *  URL 공통 파라미터: lang=ko|en, embed=1(헤더·푸터 숨김 + 부모에 높이 알림), theme=light|dark, big=1(글자 크게), seed=정수
+ *  테마: URL의 theme > 헤더 버튼으로 고른 값(브라우저에 저장) > 운영체제 설정. 교재에 끼워 넣을 때(embed)는 theme을 주지 않으면 라이트
+ *        (교재가 라이트 테마라서). 테마가 바뀌면 render를 다시 부르므로, 색을 캐시하는 그림은 EduSim.theme을 캐시 키에 넣을 것
+ *  그래프 라이브러리: 페이지가 CDN 스크립트를 불렀는데 Plot·d3가 없으면(학교망 차단 등) 안내 문구를 띄우고, 그릴 수 있는 것만 그림
  *
  *  const sim = EduSim.create({
  *    text:   { ko: {...}, en: {...} },          // 문구 사전. 'title' 키는 필수(탭 제목·헤더)
@@ -45,10 +48,19 @@
     SEED_MAX: 99999,
   };
 
-  // <head>에서 바로 적용해 헤더가 잠깐 보였다 사라지는 깜빡임을 막음
+  /* ---------- 테마 (라이트·다크) ---------- */
+  var THEME_KEY = 'edu-sims-theme';
+  var urlTheme = /^(light|dark)$/.test(query.get('theme') || '') ? query.get('theme') : null;
+  function storedTheme() { try { var v = localStorage.getItem(THEME_KEY); return v === 'light' || v === 'dark' ? v : null; } catch (e) { return null; } }
+  var darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function systemTheme() { return darkQuery && darkQuery.matches ? 'dark' : 'light'; }
+  EduSim.theme = urlTheme || (EduSim.embed ? 'light' : storedTheme() || systemTheme());
+
+  // <head>에서 바로 적용해 헤더가 잠깐 보였다 사라지거나 밝은 화면이 번쩍이는 것을 막음
   html.lang = EduSim.lang;
   html.classList.toggle('embed', EduSim.embed);
   html.classList.toggle('big', EduSim.big);
+  html.dataset.theme = EduSim.theme;
 
   var COMMON_TEXT = {
     ko: {
@@ -60,8 +72,13 @@
       pause: '⏸ 멈춤',
       rewind: '⏮ 처음으로',
       seed: '시드',
-      big: '가+',
-      bigTitle: '글자 크게 보기 (프로젝터용)',
+      toDark: '어둡게 보기',
+      toLight: '밝게 보기',
+      cdnTitle: '그래프를 불러오지 못했어요',
+      cdnBody: '그래프 라이브러리(<code>cdn.jsdelivr.net</code>)에 연결하지 못해 그래프가 비어 보일 수 있어요. ' +
+        '인터넷 연결을 확인해 보세요. 학교·병원 등 기관 네트워크가 이 주소를 막는 경우가 많으니, ' +
+        '휴대폰 데이터나 다른 네트워크에서 열거나 전산 담당자에게 <code>cdn.jsdelivr.net</code> 허용을 요청해 주세요.',
+      cdnRetry: '다시 시도',
       footer: '수업용 인터랙티브 시뮬레이터',
     },
     en: {
@@ -73,8 +90,13 @@
       pause: '⏸ Pause',
       rewind: '⏮ Restart',
       seed: 'seed',
-      big: 'A+',
-      bigTitle: 'Larger text (for projectors)',
+      toDark: 'Dark mode',
+      toLight: 'Light mode',
+      cdnTitle: 'The charts could not be loaded',
+      cdnBody: 'The chart library (<code>cdn.jsdelivr.net</code>) could not be reached, so the charts may be empty. ' +
+        'Check your internet connection. School and hospital networks often block this address: ' +
+        'try mobile data or another network, or ask your IT staff to allow <code>cdn.jsdelivr.net</code>.',
+      cdnRetry: 'Try again',
       footer: 'Interactive simulators for teaching',
     },
   };
@@ -222,7 +244,9 @@
         '<div class="seg" role="radiogroup" aria-label="Language">' +
         '<label><input type="radio" name="__lang" value="ko"><span>KO</span></label>' +
         '<label><input type="radio" name="__lang" value="en"><span>EN</span></label></div>' +
-        '<button type="button" class="btn btn-sm" data-action="big" data-t="big" data-t-title="bigTitle"></button>' +
+        '<button type="button" class="theme-btn" data-action="theme">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>' +
+        '<path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>' +
         '</div>';
       document.body.prepend(header);
       var footer = document.createElement('footer');
@@ -290,7 +314,7 @@
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
       if (btn.dataset.action === 'reroll' && useSeed) set({ seed: EduSim.newSeed(state.seed) });
-      if (btn.dataset.action === 'big') toggleBig();
+      if (btn.dataset.action === 'theme') setTheme(EduSim.theme === 'dark' ? 'light' : 'dark', true);
       if (btn.dataset.action === 'play') setPlaying(!playing);
       if (btn.dataset.action === 'rewind' && play) {
         var p = {}; p[play.param] = bound(params[play.param].min, state); carry = 0; set(p);
@@ -320,7 +344,10 @@
         el.textContent = def && def.format ? def.format(v, sim) : EduSim.fmt(v, def && def.step ? decimals(def.step) : 0);
       });
       document.querySelectorAll('[data-seed]').forEach(function (el) { el.textContent = t('seed') + ' ' + state.seed; });
-      document.querySelectorAll('[data-action="big"]').forEach(function (el) { el.setAttribute('aria-pressed', String(EduSim.big)); });
+      document.querySelectorAll('[data-action="theme"]').forEach(function (el) { // 버튼 이름 = 누르면 바뀔 모드
+        var label = t(EduSim.theme === 'dark' ? 'toLight' : 'toDark');
+        el.setAttribute('aria-label', label); el.title = label;
+      });
       document.querySelectorAll('[data-action="play"]').forEach(function (el) { el.textContent = t(playing ? 'pause' : 'play'); });
     }
 
@@ -344,10 +371,25 @@
         if (useSeed) q.set('seed', String(state.seed));
         if (EduSim.lang !== 'ko') q.set('lang', EduSim.lang);
         if (EduSim.embed) q.set('embed', '1');
+        if (urlTheme) q.set('theme', EduSim.theme); // 주소에 theme을 주고 열었을 때만 (교재용 링크에 사용자의 다크 설정이 섞이지 않게)
         if (EduSim.big) q.set('big', '1');
         var s = q.toString();
         try { history.replaceState(null, '', location.pathname + (s ? '?' + s : '') + location.hash); } catch (e) { /* 무시 */ }
       }, 250);
+    }
+
+    // 그래프 라이브러리(CDN)를 불렀는데 없으면 안내를 띄우고, 그릴 수 있는 것만 그림 (그리다 멈춰도 나머지 화면은 살림)
+    var libsMissing = !!document.querySelector('script[src*="cdn.jsdelivr.net"]') && (typeof window.Plot === 'undefined' || typeof window.d3 === 'undefined');
+    if (libsMissing) {
+      var notice = document.createElement('div');
+      notice.className = 'cdn-notice';
+      notice.setAttribute('role', 'alert');
+      notice.innerHTML = '<b data-t="cdnTitle"></b><p data-t-html="cdnBody"></p>' +
+        '<button type="button" class="btn btn-sm" data-t="cdnRetry"></button>';
+      notice.querySelector('button').addEventListener('click', function () { location.reload(); });
+      var main = document.querySelector('main') || document.body;
+      var q1 = main.querySelector('.sim-question');
+      if (q1) q1.after(notice); else main.prepend(notice);
     }
 
     var pending = false;
@@ -356,7 +398,9 @@
       pending = true;
       requestAnimationFrame(function () {
         pending = false;
-        if (opts.render) opts.render(state, sim);
+        if (!opts.render) return;
+        if (!libsMissing) { opts.render(state, sim); return; }
+        try { opts.render(state, sim); } catch (e) { /* Plot·d3가 없어 그래프에서 멈춤 — 위의 안내가 이유를 알려 줌 */ }
       });
     }
 
@@ -416,12 +460,18 @@
       schedule();
     }
 
-    function toggleBig() {
-      EduSim.big = !EduSim.big;
-      html.classList.toggle('big', EduSim.big);
+    // 테마 바꾸기: 버튼으로 고르면 브라우저에 저장(사이트 전체에 적용). 색을 다시 읽도록 다시 그림
+    function setTheme(theme, save) {
+      EduSim.theme = theme;
+      html.dataset.theme = theme;
+      if (save) { try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 저장 못 하면 이 페이지에서만 */ } }
       syncControls();
       writeURL();
       schedule();
+    }
+    // 직접 고른 적이 없으면 운영체제 설정이 바뀔 때 따라감
+    if (darkQuery && !urlTheme && !EduSim.embed && darkQuery.addEventListener) {
+      darkQuery.addEventListener('change', function () { if (!storedTheme()) setTheme(systemTheme(), false); });
     }
 
     // 그래프 영역 폭이 바뀌면(창 크기, 회전, 글자 크게) 다시 그림. 높이 변화엔 반응하지 않음(무한 반복 방지)

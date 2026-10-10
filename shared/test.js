@@ -14,14 +14,14 @@
 
   var CSS =
     '.t-banner{padding:.75rem 1rem;border-radius:10px;font-weight:700;font-size:1.1rem}' +
-    '.t-banner.pass{background:#e6f4ea;color:#0b5e1f}.t-banner.fail{background:#fbe9e7;color:#8a1c12}' +
+    '.t-banner.pass{background:var(--ok-bg);color:var(--ok-ink)}.t-banner.fail{background:var(--warn-bg);color:var(--warn-ink)}' +
     '.t-banner.run{background:var(--page);color:var(--ink-2)}' +
     '.t-sec{margin:1.25rem 0 .4rem;font-size:1rem}' +
     '.t-table{width:100%;border-collapse:collapse;font-size:.875rem}' +
     '.t-table td{border-top:1px solid var(--line);padding:.35rem .5rem;vertical-align:top}' +
     '.t-table td:first-child{width:2rem;text-align:center;font-weight:700}' +
-    '.t-table tr.pass td:first-child{color:#0b7a27}.t-table tr.fail td:first-child{color:#c0301f}' +
-    '.t-table tr.fail{background:#fdf3f1}' +
+    '.t-table tr.pass td:first-child{color:var(--ok-ink)}.t-table tr.fail td:first-child{color:var(--warn)}' +
+    '.t-table tr.fail{background:var(--warn-bg)}' +
     '.t-detail{color:var(--ink-2);font-variant-numeric:tabular-nums;word-break:break-all}';
 
   function fmt(x) {

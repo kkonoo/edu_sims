@@ -4,6 +4,8 @@
 
 - 사이트: <https://kkonoo.github.io/edu_sims/>
 - 빌드 없음: HTML/CSS/JS 그대로. 차트만 CDN의 [Observable Plot](https://observablehq.com/plot/) 0.6.17 (+ d3 7.9.0)
+- 라이트·다크 모드: 헤더 오른쪽의 반쯤 칠한 원 버튼. 처음에는 운영체제 설정을 따르고, 버튼으로 고르면 브라우저에 저장되어 사이트 전체에 적용됩니다.
+- 학교·병원 네트워크처럼 CDN(`cdn.jsdelivr.net`)이 막혀 그래프 라이브러리를 못 받으면, 질문 아래에 이유와 해결 방법을 알리는 안내가 뜹니다(표·숫자·조작은 그대로 동작).
 
 | 시뮬레이터 | 주소 | 쓰이는 교재 |
 |---|---|---|
@@ -56,6 +58,7 @@
 
 - `embed=1`: 헤더·푸터를 숨기고 본체만 보여 줍니다.
 - `lang=ko` / `lang=en`: 영어 교재에는 `lang=en`.
+- 교재에 끼워 넣으면 교재(라이트 테마)에 맞춰 늘 라이트로 보입니다. 다크 배경 페이지에 넣을 때만 `&theme=dark`를 붙이세요.
 - `::: {.column-page}`: 본문(약 800px)보다 넓게(약 1000px) 펼쳐서 조작 패널과 그래프가 나란히 보이게 합니다. 빼도 동작합니다.
 - `height: 1300px`: 스크립트가 실제 높이로 바꾸기 전의 초기값입니다.
 
@@ -81,7 +84,8 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 |---|---|---|
 | `lang` | `ko`, `en` | `ko` |
 | `embed` | `1`이면 본체만 | — |
-| `big` | `1`이면 글자 크게 (프로젝터용. 헤더의 **가+** 버튼과 같음) | — |
+| `theme` | `light`, `dark` — 주면 그 테마로 고정. 안 주면 헤더 버튼으로 고른 값 → 운영체제 설정 (embed는 라이트) | — |
+| `big` | `1`이면 글자 크게 (프로젝터용) | — |
 | `seed` | 1–99999 | 1 |
 
 **다중검정과 FDR** (`sims/multiple-testing/`)
@@ -231,7 +235,8 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
    - 재생(애니메이션): `EduSim.create({ play: { param: 'n', speed: 'speed' } })`와 `<button data-action="play">`, `<button data-action="rewind">`. `n`이 초당 `speed`만큼 늘고, 끝에 닿거나 `n`의 슬라이더를 손으로 끌면 멈춥니다. 재생 중인지는 `sim.isPlaying()` ([`sims/mcmc/main.js`](sims/mcmc/main.js) 참고).
 
    - 난수는 `EduSim.rng(state.seed)`(`uniform()`, `normal()`)를 쓰면 다시 뽑기·시드 표시·URL이 자동으로 따라옵니다.
-   - 그래프 색은 `EduSim.css('--c1')` ~ `--c4` (파랑·주황·청록·보라, 색각이상 검증 통과), 합친 값은 `--c-neutral`.
+   - 그래프 색은 `EduSim.css('--c1')` ~ `--c4` (파랑·주황·청록·보라, 색각이상 검증 통과), 합친 값은 `--c-neutral`. 경고·강조는 `--warn`, `--warn-bg`, `--warn-ink`.
+   - 색은 늘 CSS 변수로만 씁니다(16진수를 직접 쓰지 않기). 그러면 다크 모드에서 `shared/style.css`의 다크 값(바탕 `#1a1a19`에 맞춰 따로 검증한 팔레트)으로 저절로 바뀝니다. 테마를 바꾸면 `render`가 다시 불리므로 색을 그때그때 읽으면 되고, 색을 캐시하는 그림(캔버스에 쌓아 그리기 등)은 캐시 키에 `EduSim.theme`을 넣습니다.
 
 4. **(계산이 복잡하면) 테스트** — 계산을 `model.js`로 따로 빼고 `test.html`에서 검사합니다. [`sims/multiple-testing/test.html`](sims/multiple-testing/test.html) 참고.
 
@@ -248,13 +253,13 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
    제목·질문은 `gallery.js`와 `text.js` 두 곳에 있으니 고칠 때 같이 고칩니다. 교재를 추가하거나 이름을 바꾸려면 같은 파일의 `BOOKS`를 고칩니다.
 
-6. **확인** — 브라우저로 열어서 `⟦…⟧`가 없는지, `?lang=en`, `?embed=1`, 폰 폭, **가+**(글자 크게)에서 보기 좋은지 확인합니다.
+6. **확인** — 브라우저로 열어서 `⟦…⟧`가 없는지, `?lang=en`, `?embed=1`, 폰 폭, 다크 모드(`?theme=dark`), 글자 크게(`?big=1`)에서 보기 좋은지 확인합니다.
 
 ---
 
 ## 로컬에서 보기 · 테스트
 
-- 파일을 더블클릭해서 열어도 됩니다(그래프 라이브러리는 CDN에서 받으므로 인터넷은 필요).
+- 파일을 더블클릭해서 열어도 됩니다(그래프 라이브러리는 CDN에서 받으므로 인터넷은 필요. 연결이 안 되면 안내가 뜹니다).
 - 또는 저장소 폴더에서 `python3 -m http.server` 후 <http://localhost:8000>
 - 테스트: 시뮬레이터 폴더의 `test.html`을 열면 맨 위에 결과가 나옵니다. 기댓값은 R 4.5.1에서 뽑았고, 그 R 코드가 각 테스트 파일 주석에 있습니다.
   - `sims/multiple-testing/test.html` (38개): p값, BH 보정값(R `p.adjust`), 몬테카를로 FDR·FWER
@@ -271,8 +276,8 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 ```
 index.html, gallery.js      갤러리와 등록부(교재 목록 포함)
-shared/style.css            공통 레이아웃·조작·색
-shared/sim.js               공통 모듈 EduSim: URL 상태, 언어, 난수, 시드, 재생, embed 높이 알림, 글자 크게
+shared/style.css            공통 레이아웃·조작·색 (라이트·다크 두 벌)
+shared/sim.js               공통 모듈 EduSim: URL 상태, 언어, 테마, 난수, 시드, 재생, embed 높이 알림, CDN 차단 안내
 shared/test.js              브라우저 테스트 도우미
 sims/_template/             새 시뮬레이터용 틀
 sims/multiple-testing/      다중검정과 FDR (index.html, text.js, model.js, main.js, test.html)

@@ -18,6 +18,14 @@
   --c4: #4a3aa7; /* 보라 */
   --c-neutral: #74737c; /* 구분 없이 합친 값 */
 
+  /* 경고·강조 (유의, 위양성 등)와 테스트 결과 */
+  --warn: #b3261e;
+  --warn-ink: #8a1c12;
+  --warn-bg: #fbe9e7;
+  --warn-line: #e7a197;
+  --ok-ink: #0b5e1f;
+  --ok-bg: #e6f4ea;
+
   --radius: 14px;
   --gap: 1rem;
   --font: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo",
@@ -27,7 +35,38 @@
   font-size: 100%;
 }
 
-/* 프로젝터용 글자 크게 보기: 모든 크기가 rem 기준이라 이것만 바꾸면 됨 */
+/* 다크 모드: html[data-theme="dark"] (shared/sim.js가 정함). 데이터 색은 다크 바탕에 맞춘 단계로 따로 검증
+   (4색 모든 쌍 CVD ΔE ≥ 9.4, 정상 시각 ΔE ≥ 16, 바탕 #1a1a19 대비 ≥ 3:1). 라이트에선 보라가 가장 어둡고, 다크에선 가장 밝음 */
+html[data-theme="dark"] {
+  --page: #121211;
+  --surface: #1a1a19;
+  --ink: #ededea;
+  --ink-2: #b6b5af;
+  --muted: #8a8983;
+  --line: #2b2b29;
+  --line-strong: #44443f;
+  --ring: rgba(0, 0, 0, 0.45);
+
+  --c1: #2773ee; /* 파랑 */
+  --c2: #d95926; /* 주황 */
+  --c3: #199e70; /* 청록 */
+  --c4: #a183d4; /* 보라 */
+  --c-neutral: #8f8e96;
+
+  --warn: #ff8f80;
+  --warn-ink: #ffb4a8;
+  --warn-bg: #3b201c;
+  --warn-line: #8f4035;
+  --ok-ink: #94dcaa;
+  --ok-bg: #17321f;
+
+  color-scheme: dark;
+}
+
+/* 그래프(Observable Plot)의 툴팁 바탕도 테마를 따름 */
+svg { --plot-background: var(--surface); }
+
+/* 프로젝터용 글자 크게 보기(URL ?big=1): 모든 크기가 rem 기준이라 이것만 바꾸면 됨 */
 html.big { font-size: 137.5%; }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -66,6 +105,25 @@ button, input { font: inherit; color: inherit; }
 .site-header .tools { display: flex; gap: 0.5rem; margin-left: auto; }
 .site-header .seg label { flex: none; }
 .site-header .seg span { padding: 0.3rem 0.6rem; overflow: visible; }
+/* 라이트·다크 바꾸기: 반쯤 칠한 원 아이콘 버튼 */
+.theme-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 2.5rem; height: 2.5rem; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--ink); cursor: pointer;
+}
+.theme-btn:hover { background: var(--line); }
+.theme-btn:focus-visible { outline: 2px solid var(--c1); outline-offset: 1px; }
+.theme-btn svg { width: 1.6rem; height: 1.6rem; display: block; }
+
+/* 그래프 라이브러리를 못 불러왔을 때 (CDN이 막힌 네트워크 등) */
+.cdn-notice {
+  background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line);
+  border-radius: var(--radius); padding: 0.8rem 1rem; font-size: 0.95rem;
+}
+.cdn-notice b { display: block; margin-bottom: 0.2rem; }
+.cdn-notice p { margin: 0 0 0.6rem; }
+.cdn-notice code { font-size: 0.9em; }
+.cdn-notice .btn { color: var(--ink); }
 
 .site-footer {
   max-width: 75rem; margin: 2rem auto 0; padding: 1rem;
