@@ -10,6 +10,7 @@
 | 다중검정과 FDR | [`sims/multiple-testing/`](https://kkonoo.github.io/edu_sims/sims/multiple-testing/) | BI 입문(핵심 주제), 회귀(변수선택), 고급 BI(GWAS) |
 | 사전분포 × 가능도 → 사후분포 | [`sims/prior-posterior/`](https://kkonoo.github.io/edu_sims/sims/prior-posterior/) | 베이즈 W1–3 |
 | 2×2 행렬과 고유벡터 | [`sims/matrix-2x2/`](https://kkonoo.github.io/edu_sims/sims/matrix-2x2/) | 선형대수 2·11·12장 |
+| 최소제곱: 잔차·이상치·leverage | [`sims/least-squares/`](https://kkonoo.github.io/edu_sims/sims/least-squares/) | 회귀 1·3부, 선형대수 9장 |
 
 ---
 
@@ -114,6 +115,17 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 예: 관찰 과제 2 "대칭행렬, 고유벡터 숨기고 v로 찾기" → `?embed=1&a=2&b=1&c=1&d=2&eig=off`
 
+**최소제곱: 잔차·이상치·leverage** (`sims/least-squares/`)
+
+| 파라미터 | 뜻 | 값 | 기본 |
+|---|---|---|---|
+| `pts` | 점 목록 `x,y;x,y;…` (0 ~ 10, 0.1 단위, 3 ~ 40개). 비우면 `seed`로 만든 데이터 | 문자열 | "깨끗한" 프리셋 |
+| `resid` | 잔차 세로선 | `on`, `off` | `on` |
+| `sq` | 잔차 제곱(정사각형) | `on`, `off` | `off` |
+| `seed` | `pts`가 비었을 때 데이터를 만드는 시드 | 1–99999 | 1 |
+
+점을 끌어 만든 배치는 주소창 URL에 그대로 들어 있으니, 그 URL에 `&embed=1`을 붙여 교재에 넣으면 됩니다.
+
 범위를 벗어난 값은 가장 가까운 허용값(또는 기본값)으로 바뀝니다.
 
 ---
@@ -148,7 +160,8 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
    - 숫자를 정확히 넣어야 하면 슬라이더 옆에 `<input type="number" data-param="이름">`을 둡니다(Enter나 칸을 벗어날 때 반영).
    - 여러 값을 한 번에 바꾸는 버튼: `<button data-set='{"p":0.5,"n":20}'>`. 지금 값과 같으면 눌린 모양이 됩니다.
    - 켜고 끄는 값: `{ options: ['on', 'off'] }` + `<input type="checkbox" data-param="이름">`.
-   - 그림에서 점 끌기: `EduSim.drag(요소, { pick(x, y), move(대상, x, y), end() })`. 터치에서는 점을 잡은 손가락만 스크롤을 막습니다([`sims/matrix-2x2/main.js`](sims/matrix-2x2/main.js) 참고).
+   - 그림에서 점 끌기: `EduSim.drag(요소, { pick(x, y), move(대상, x, y), end() })`. 누르기만 하면 아무것도 움직이지 않고, 터치에서는 점을 잡은 손가락만 스크롤을 막습니다. Plot 그림 위에서도 동작합니다([`sims/matrix-2x2/main.js`](sims/matrix-2x2/main.js), [`sims/least-squares/main.js`](sims/least-squares/main.js) 참고).
+   - URL에 문자열을 담으려면 `{ str: true, default: '' }` (예: 점 목록).
 
    - 난수는 `EduSim.rng(state.seed)`(`uniform()`, `normal()`)를 쓰면 다시 뽑기·시드 표시·URL이 자동으로 따라옵니다.
    - 그래프 색은 `EduSim.css('--c1')` ~ `--c4` (파랑·주황·청록·보라, 색각이상 검증 통과), 합친 값은 `--c-neutral`.
@@ -180,6 +193,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
   - `sims/multiple-testing/test.html` (38개): p값, BH 보정값(R `p.adjust`), 몬테카를로 FDR·FWER
   - `sims/prior-posterior/test.html` (41개): `lgamma`·`dbeta`·`pbeta`·`qbeta`, 켤레 공식, 신용구간 포함률
   - `sims/matrix-2x2/test.html` (32개): 고유값·고유벡터(R `eigen`), 복소·중근·전단·cI 구분, tr·det 관계, 무작위 행렬 3,000개
+  - `sims/least-squares/test.html` (25개): R `lm`의 계수·R²·σ̂·`hatvalues`·`rstandard`·`cooks.distance`, 잔차의 직교성, Cook 거리 정의
 
 ## 구조
 
@@ -192,6 +206,7 @@ sims/_template/             새 시뮬레이터용 틀
 sims/multiple-testing/      다중검정과 FDR (index.html, text.js, model.js, main.js, test.html)
 sims/prior-posterior/       사전분포 × 가능도 → 사후분포 (같은 구성)
 sims/matrix-2x2/            2×2 행렬과 고유벡터 (같은 구성, 차트 라이브러리 없이 SVG)
+sims/least-squares/         최소제곱: 잔차·이상치·leverage (같은 구성)
 quarto/edu-sims-resize.html Quarto include용 높이 자동 조절 스크립트
 .nojekyll                   GitHub Pages가 _template 폴더도 그대로 서빙하도록
 ```

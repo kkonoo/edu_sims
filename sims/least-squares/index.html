@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>edu_sims</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <!-- 차트: Observable Plot (d3가 먼저 있어야 함). 버전 고정 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/dist/plot.umd.min.js"></script>
+  <style>
+    .presets { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .checks { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .hint { font-size: 0.8rem; color: var(--muted); margin: -0.3rem 0 0; }
+
+    .stats-card .stats { grid-template-columns: 2fr 1fr 1fr 0.6fr; }
+    .stats-card .stat .v { font-size: 1.3rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    @media (max-width: 560px) {
+      .stats-card .stats { grid-template-columns: 1fr 1fr; }
+    }
+
+    .sel h3 { margin: 0 0 0.3rem; font-size: 1rem; }
+    .sel h3 .xy { font-weight: 400; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .sel table { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+    .sel td { padding: 0.15rem 0; vertical-align: baseline; }
+    .sel td.v { text-align: right; font-weight: 650; padding-right: 0.5rem; white-space: nowrap; }
+    .sel td.cut { color: var(--muted); font-size: 0.75rem; }
+    .sel .warn { color: #b3261e; }
+    .sel .loo { margin: 0.4rem 0 0; font-size: 0.9rem; }
+
+    #scatter, #diag { position: relative; }
+    .legend .dot.blue { background: var(--c1); border-color: var(--c1); }
+    .legend .dot.violet { background: var(--c4); border-color: var(--c4); }
+  </style>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question" data-t="question"></h1>
+
+    <div class="sim-layout">
+      <section class="card panel" aria-labelledby="panel-title">
+        <h2 class="card-title" id="panel-title" data-t="panel"></h2>
+
+        <h3 class="panel-sub" id="mode-label" data-t="modeHead"></h3>
+        <div class="seg" role="radiogroup" aria-labelledby="mode-label">
+          <label><input type="radio" name="ui-mode" value="drag" checked><span data-t="modeDrag"></span></label>
+          <label><input type="radio" name="ui-mode" value="add"><span data-t="modeAdd"></span></label>
+          <label><input type="radio" name="ui-mode" value="delete"><span data-t="modeDelete"></span></label>
+        </div>
+        <p class="hint" id="count"></p>
+
+        <h3 class="panel-sub" data-t="dataHead"></h3>
+        <div class="presets" id="presets"></div>
+        <div class="seed-row">
+          <button type="button" class="btn" id="reroll" data-t="reroll"></button>
+          <span class="seed" data-seed></span>
+        </div>
+
+        <h3 class="panel-sub" data-t="viewHead"></h3>
+        <div class="checks">
+          <label class="check"><input type="checkbox" data-param="resid"><span data-t="showResid"></span></label>
+          <label class="check"><input type="checkbox" data-param="sq"><span data-t="showSq"></span></label>
+        </div>
+
+        <div class="sel" aria-live="polite">
+          <h3 class="panel-sub" id="sel-head"></h3>
+          <div id="sel-body"></div>
+        </div>
+      </section>
+
+      <div class="sim-figs">
+        <section class="card stats-card" aria-live="polite">
+          <div class="stats">
+            <div class="stat"><div class="k" data-t="statLine"></div><div class="v" id="stat-line"></div></div>
+            <div class="stat"><div class="k" data-t="statR2"></div><div class="v" id="stat-r2"></div></div>
+            <div class="stat"><div class="k" data-t="statSigma"></div><div class="v" id="stat-sigma"></div></div>
+            <div class="stat"><div class="k" data-t="statN"></div><div class="v" id="stat-n"></div></div>
+          </div>
+        </section>
+
+        <figure class="card fig">
+          <figcaption class="card-title" data-t="scatterTitle"></figcaption>
+          <div id="scatter"></div>
+          <div class="legend">
+            <span class="key"><span class="dot blue"></span><span data-t="legendPoint"></span></span>
+            <span class="key"><span class="dot violet"></span><span data-t="legendSel"></span></span>
+            <span class="key"><span class="ln" style="border-color: var(--c2)"></span><span data-t="legendLine"></span></span>
+            <span class="key"><span class="ln dash" style="border-color: var(--ink-2)"></span><span data-t="legendLoo"></span></span>
+            <span class="key"><span class="ln" style="border-color: var(--c-neutral)"></span><span data-t="legendResid"></span></span>
+            <span class="key"><span class="sw" style="background: var(--c2); opacity: 0.2"></span><span data-t="legendSq"></span></span>
+          </div>
+        </figure>
+
+        <figure class="card fig">
+          <figcaption class="card-title" data-t="diagTitle"></figcaption>
+          <div id="diag"></div>
+          <div class="legend">
+            <span class="key"><span class="ln dash" style="border-color: var(--c3)"></span><span data-t="legendCook"></span></span>
+            <span class="key"><span class="ln dot-line" style="border-color: var(--ink-2)"></span><span data-t="legendCuts"></span></span>
+          </div>
+        </figure>
+      </div>
+    </div>
+
+    <section class="card tasks">
+      <h2 data-t="tasksTitle"></h2>
+      <ol>
+        <li data-t-html="task1"></li>
+        <li data-t-html="task2"></li>
+        <li data-t-html="task3"></li>
+      </ol>
+    </section>
+
+    <details class="card explain">
+      <summary data-t="explainTitle"></summary>
+      <div data-t-html="explain"></div>
+    </details>
+  </main>
+
+  <script src="text.js"></script>
+  <script src="model.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

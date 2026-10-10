@@ -46,4 +46,16 @@ const SIMS = [
     },
     books: [['2_linear_algebra', { ko: '2·11·12장', en: 'ch. 2, 11, 12' }]],
   },
+  {
+    id: 'least-squares',
+    title: { ko: '최소제곱: 잔차·이상치·leverage', en: 'Least squares: residuals, outliers, leverage' },
+    question: {
+      ko: '점 하나가 회귀선을 얼마나 끌고 갈 수 있을까?',
+      en: 'How far can a single point drag the regression line?',
+    },
+    books: [
+      ['3_linear_regression', { ko: '1·3부', en: 'parts 1, 3' }],
+      ['2_linear_algebra', { ko: '9장', en: 'ch. 9' }],
+    ],
+  },
 ];

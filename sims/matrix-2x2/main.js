@@ -13,6 +13,7 @@ const r1 = (v) => Number(v.toFixed(1));
 
 // 마지막으로 그린 그림의 크기와 끌 수 있는 점 (드래그에서 씀)
 let view = { S: 1, knobs: [] };
+let grab = [0, 0]; // 잡은 점 위치 − 누른 위치 (점이 커서로 튀지 않게)
 
 function drawPlane(s, sim, M, eig) {
   const el = $('plane');
@@ -199,12 +200,13 @@ EduSim.drag($('plane'), {
     let best = null, bestD = 24;
     for (const k of view.knobs) {
       const d = Math.hypot(px - k.x, py - k.y);
-      if (d < bestD) { bestD = d; best = k.id; }
+      if (d < bestD) { bestD = d; best = k.id; grab = [k.x - px, k.y - py]; }
     }
     if (best) { stopPlay(); $('plane').classList.add('dragging'); }
     return best;
   },
   move(id, px, py) {
+    px += grab[0]; py += grab[1];
     const x = (px / view.S) * 2 * L - L, y = L - (py / view.S) * 2 * L;
     const snap = (val, lim) => r1(Math.min(lim, Math.max(-lim, Math.round(val / SNAP) * SNAP)));
     if (id === 'v') sim.set({ vx: snap(x, 4), vy: snap(y, 4) });

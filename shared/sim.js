@@ -11,6 +11,7 @@
  *      p:      { min: 0, max: 1, step: 0.01, default: 0.5 },     // 연속 슬라이더
  *      k:      { min: 0, max: (s) => s.n, step: 1, default: 3 }, // 범위가 다른 값에 따라 바뀜 (앞에 정의된 값만 참조)
  *      method: { options: ['a', 'b'], default: 'a' },            // 라디오
+ *      pts:    { str: true, default: '' },                        // 문자열 그대로 (비어 있으면 URL에 안 씀)
  *    },
  *    render(state, sim) { ... },                // 값이 바뀔 때마다 한 프레임에 한 번 호출
  *  });
@@ -98,18 +99,20 @@
   /* ---------- 드래그 ----------
    * el(다시 그려도 그대로 남는 요소) 안에서 누르면 pick(x, y)가 잡을 대상을 고르고(없으면 null),
    * 끄는 동안 move(대상, x, y), 놓으면 end()(있으면)를 부름. x, y는 el 왼쪽 위 기준 px.
+   * 점이 커서로 튀지 않게 하려면 pick에서 (점 위치 − 누른 위치)를 기억해 move에서 더해 쓰세요.
    * 터치: 잡는 점에서 시작한 터치만 스크롤을 막고, 그 밖을 쓸 때는 페이지가 그대로 스크롤됨 */
   EduSim.drag = function (el, opts) {
     var target = null;
     function pos(e) { var r = el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+    // 캡처 단계에서 받음: Plot의 툴팁은 마우스로 점을 누르면 이벤트를 멈춰 버리므로(눌러서 고정) 그보다 먼저 처리
     el.addEventListener('pointerdown', function (e) {
       var p = pos(e);
       target = opts.pick(p[0], p[1]);
       if (target == null) return;
       e.preventDefault();
-      el.setPointerCapture(e.pointerId);
-      opts.move(target, p[0], p[1]);
-    });
+      e.stopPropagation(); // 점을 잡았으면 툴팁 고정은 하지 않음
+      el.setPointerCapture(e.pointerId); // 누르기만 하고 떼면 아무것도 움직이지 않음
+    }, true);
     el.addEventListener('pointermove', function (e) {
       if (target == null) return;
       var p = pos(e);
@@ -153,6 +156,7 @@
   function bound(b, state) { return typeof b === 'function' ? b(state) : b; }
 
   function parseParam(def, raw, state) {
+    if (def.str) return raw == null ? def.default : String(raw);
     if (def.options) return def.options.indexOf(raw) >= 0 ? raw : def.default;
     var v = raw == null || raw === '' ? NaN : Number(raw);
     if (!isFinite(v)) return def.default;
@@ -314,7 +318,9 @@
       clearTimeout(urlTimer);
       urlTimer = setTimeout(function () {
         var q = new URLSearchParams();
-        Object.keys(params).forEach(function (name) { q.set(name, String(state[name])); });
+        Object.keys(params).forEach(function (name) {
+          if (!(params[name].str && state[name] === '')) q.set(name, String(state[name]));
+        });
         if (useSeed) q.set('seed', String(state.seed));
         if (EduSim.lang !== 'ko') q.set('lang', EduSim.lang);
         if (EduSim.embed) q.set('embed', '1');
