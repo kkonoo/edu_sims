@@ -105,4 +105,13 @@ const SIMS = [
     },
     books: [['4_Bayes', 'W5–6']],
   },
+  {
+    id: 'network-null',
+    title: { ko: '네트워크 null model: 차수 보존 재배선', en: 'Network null models: degree-preserving rewiring' },
+    question: {
+      ko: '뭉침 계수 0.57은 큰 값일까? 차수가 똑같은 무작위 네트워크와 비교하면?',
+      en: 'Is a clustering coefficient of 0.57 large? Compared with random networks that have exactly the same degrees?',
+    },
+    books: [['4_graphs', { ko: '04장', en: 'ch. 4' }]],
+  },
 ];

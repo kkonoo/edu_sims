@@ -15,6 +15,7 @@
 | 교란변수와 배치효과 | [`sims/confounding/`](https://kkonoo.github.io/edu_sims/sims/confounding/) | BI 입문(핵심 주제), 고급 BI(연구설계), 회귀 |
 | PCA·SVD: 저랭크 근사 | [`sims/pca-svd/`](https://kkonoo.github.io/edu_sims/sims/pca-svd/) | 선형대수 13·15장, BI 입문(scRNA), 고급 BI(single-cell) |
 | MCMC: 제안 폭과 체인의 움직임 | [`sims/mcmc/`](https://kkonoo.github.io/edu_sims/sims/mcmc/) | 베이즈 W5–6 |
+| 네트워크 null model: 차수 보존 재배선 | [`sims/network-null/`](https://kkonoo.github.io/edu_sims/sims/network-null/) | 그래프 04장 |
 
 ---
 
@@ -180,6 +181,17 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 예: 관찰 과제 3 "두 봉우리, τ = 0.5, 체인 4개, 끝까지" → `?embed=1&target=bimodal&tau=0.5&chains=4&n=5000`
 
+**네트워크 null model: 차수 보존 재배선** (`sims/network-null/`)
+
+| 파라미터 | 뜻 | 값 | 기본 |
+|---|---|---|---|
+| `swaps` | null 네트워크마다 재배선 시도 횟수 (× 엣지 수 m = 78) | 0, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50 | 10 |
+| `n` | 쌓은 null 네트워크 수 (재생 막대) | 0–1000 | 1000 |
+| `speed` | 재생 속도 (초당 null 수) | 5, 20, 100, 500 | 100 |
+| `seed` | 재배선 난수의 시드 (null #i는 시드 × 1000 + i) | 1–99999 | 1 |
+
+데이터는 Zachary karate club(networkx `karate_club_graph`와 같음) 하나입니다. 예: 관찰 과제 2 "재배선이 모자랄 때" → `?embed=1&swaps=0.1`
+
 범위를 벗어난 값은 가장 가까운 허용값(또는 기본값)으로 바뀝니다.
 
 ---
@@ -253,6 +265,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
   - `sims/ridge-lasso/test.html` (29개): Ridge 닫힌 해(R), Lasso의 KKT 조건·직교 설계의 정확한 해·λ 극한, 경로의 단조성, 기하 그림의 접점 (glmnet은 이 작업 환경에서 설치할 수 없어 비교하지 않음)
   - `sims/pca-svd/test.html` (43개): R `svd()`(작은 행렬 6개: 가로·세로로 긴 것, 랭크 부족, 중근, 힐베르트 / 시드 1 이미지의 특잇값 120개), R `prcomp()`의 sdev·loading·점수·누적 비율, 직교성·복원·에카르트–영(오차 공식과 "가장 가까움"), 모양별 랭크, 드문 유형 D가 PC3(중심화 안 하면 PC4)에 나오는지(시드 100개), 수렴 속도
   - `sims/mcmc/test.html` (45개): 교재 W6의 R 함수 `ess_basic`·`split_rhat`·`var_plus_hat`(체인 6세트, ESS > 표본 수인 반상관 체인 포함)와 R `acf`, 수용률의 정확한 값(정규 목표의 닫힌 꼴, 두 봉우리는 독립표본으로), 정상분포 유지, Var(평균) ≈ 분산/ESS, 목표밀도의 정규화·주변분포, 수용·기각 규칙, 수업 의도(시드 30개: τ별 ESS 순서, 봉우리에 갇혀도 멀쩡해 보이는 체인, R̂)
+  - `sims/network-null/test.html` (35개): networkx karate club의 차수·삼각형·평균 뭉침 계수·transitivity, R 인접행렬 계산(tr(A³)/6, 노드별 C)과 비교, 재배선 뒤 차수 그대로·자기루프 없음·중복 엣지 없음(그래프 880개 + 무작위 그래프 200개), 같은 차수의 그래프를 모두 나열한 균등성 카이제곱, Z·p 공식, transitivity와 삼각형의 Z가 같음, 교재 표와 비교, 재배선 횟수에 따른 안정, 시드 10개에서 지표별 결론
 
 ## 구조
 
@@ -270,6 +283,7 @@ sims/ridge-lasso/           Ridge와 Lasso: λ와 수축 (같은 구성)
 sims/confounding/           교란변수와 배치효과 (같은 구성)
 sims/pca-svd/               PCA·SVD: 저랭크 근사 (같은 구성, 행렬 그림은 캔버스)
 sims/mcmc/                  MCMC: 제안 폭과 체인의 움직임 (같은 구성, 재생 기능, 점·선은 캔버스)
+sims/network-null/          네트워크 null model: 차수 보존 재배선 (같은 구성, 재생 기능, 네트워크는 SVG)
 quarto/edu-sims-resize.html Quarto include용 높이 자동 조절 스크립트
 .nojekyll                   GitHub Pages가 _template 폴더도 그대로 서빙하도록
 ```

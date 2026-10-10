@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>edu_sims</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <!-- 차트: Observable Plot (d3가 먼저 있어야 함). 버전 고정 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/dist/plot.umd.min.js"></script>
+  <style>
+    .note { font-size: 0.8rem; color: var(--muted); margin: -0.3rem 0 0; }
+    .play-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .play-row .btn { flex: 1 1 auto; }
+
+    table.zt { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    table.zt th { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); text-align: right; padding: 0 0.5rem 0.3rem; white-space: nowrap; }
+    table.zt th:first-child, table.zt td:first-child { text-align: left; padding-left: 0; }
+    table.zt td { text-align: right; padding: 0.35rem 0.5rem; border-top: 1px solid var(--line); white-space: nowrap; }
+    table.zt td:first-child { white-space: normal; font-weight: 600; }
+    table.zt td.big { font-size: 1.2rem; font-weight: 700; }
+    table.zt td.sig { color: #b3261e; }
+    .table-note { font-size: 0.8rem; color: var(--muted); margin: 0.4rem 0 0; }
+    /* 좁은 화면: 지표마다 한 덩어리(이름 위, 값 네 개는 작은 이름표와 함께 아래) */
+    @media (max-width: 600px) {
+      table.zt thead { display: none; }
+      table.zt, table.zt tbody { display: block; }
+      table.zt tr { display: grid; grid-template-columns: 0.9fr 1.7fr 0.8fr 1fr; gap: 0 0.5rem; padding: 0.45rem 0; border-top: 1px solid var(--line); }
+      table.zt td { display: block; border: 0; padding: 0; text-align: left; }
+      table.zt td:first-child { grid-column: 1 / -1; margin-bottom: 0.15rem; }
+      table.zt td[data-label]::before { content: attr(data-label); display: block; font-size: 0.7rem; font-weight: 600; color: var(--muted); }
+      html.big table.zt tr { grid-template-columns: 1fr 1fr; gap: 0.3rem 0.75rem; } /* 글자 크게: 값 네 개를 2 × 2로 */
+    }
+
+    .nets { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 880px) { .nets { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+    .net h3 { margin: 0; font-size: 0.9rem; font-weight: 650; }
+    .net .sub { margin: 0; font-size: 0.8rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .net svg { display: block; width: 100%; height: auto; }
+    .net .empty { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.9rem; background: var(--page); border-radius: 8px; }
+
+    .hists { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+    @media (min-width: 880px) { .hists { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+    .hists h3 { margin: 0; font-size: 0.9rem; font-weight: 650; }
+
+    .legend .dot.c1 { background: var(--c1); border-color: var(--c1); }
+    .legend .dot.c2 { background: var(--c2); border-color: var(--c2); }
+  </style>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question" data-t="question"></h1>
+
+    <div class="sim-layout">
+      <section class="card panel" aria-labelledby="panel-title">
+        <h2 class="card-title" id="panel-title" data-t="panel"></h2>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="swaps" data-t="swaps"></label><output for="swaps" data-out="swaps"></output></div>
+          <input type="range" id="swaps" data-param="swaps">
+        </div>
+        <p class="note" data-t="swapsNote"></p>
+
+        <h3 class="panel-sub" data-t="nullHead"></h3>
+        <div class="play-row">
+          <button type="button" class="btn" data-action="play"></button>
+          <button type="button" class="btn" data-action="rewind" data-t="rewind"></button>
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="n" data-t="n"></label><output for="n" data-out="n"></output></div>
+          <input type="range" id="n" data-param="n">
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="speed" data-t="speed"></label><output for="speed" data-out="speed"></output></div>
+          <input type="range" id="speed" data-param="speed">
+        </div>
+
+        <div class="seed-row">
+          <button type="button" class="btn" data-action="reroll" data-t="reroll"></button>
+          <span class="seed" data-seed></span>
+        </div>
+      </section>
+
+      <div class="sim-figs">
+        <section class="card" aria-live="polite">
+          <div>
+            <table class="zt">
+              <thead><tr><th data-t="colMetric"></th><th data-t="colObs"></th><th data-t="colNull"></th><th data-t="colZ"></th><th data-t="colP"></th></tr></thead>
+              <tbody>
+                <tr><td data-t="rowC"></td><td id="c-obs" data-col="colObs"></td><td id="c-null" data-col="colNull"></td><td class="big" id="c-z" data-col="colZ"></td><td id="c-p" data-col="colP"></td></tr>
+                <tr><td data-t="rowTri"></td><td id="t-obs" data-col="colObs"></td><td id="t-null" data-col="colNull"></td><td class="big" id="t-z" data-col="colZ"></td><td id="t-p" data-col="colP"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="table-note" id="table-note"></p>
+        </section>
+
+        <figure class="card fig">
+          <figcaption class="card-title" data-t="netTitle"></figcaption>
+          <div class="nets">
+            <div class="net"><h3 data-t="panelObs"></h3><p class="sub" id="obs-sub"></p><div id="net-obs"></div></div>
+            <div class="net"><h3 id="null-head"></h3><p class="sub" id="null-sub"></p><div id="net-null"></div></div>
+          </div>
+          <div class="legend">
+            <span class="key"><span class="dot c1"></span><span data-t="legendHi"></span></span>
+            <span class="key"><span class="dot c2"></span><span data-t="legendOfficer"></span></span>
+            <span class="key"><span data-t="legendSize"></span></span>
+            <span class="key"><span class="ln" style="border-color: var(--line-strong)"></span><span data-t="legendOld"></span></span>
+            <span class="key"><span class="ln" style="border-color: var(--ink-2)"></span><span data-t="legendNew"></span></span>
+          </div>
+        </figure>
+
+        <figure class="card fig">
+          <figcaption class="card-title" data-t="histTitle"></figcaption>
+          <div class="hists">
+            <div><h3 data-t="histC"></h3><div id="hist-c"></div></div>
+            <div><h3 data-t="histTri"></h3><div id="hist-t"></div></div>
+          </div>
+        </figure>
+      </div>
+    </div>
+
+    <section class="card tasks">
+      <h2 data-t="tasksTitle"></h2>
+      <ol>
+        <li data-t-html="task1"></li>
+        <li data-t-html="task2"></li>
+        <li data-t-html="task3"></li>
+      </ol>
+    </section>
+
+    <details class="card explain">
+      <summary data-t="explainTitle"></summary>
+      <div data-t-html="explain"></div>
+    </details>
+  </main>
+
+  <script src="text.js"></script>
+  <script src="model.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

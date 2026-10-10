@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>테스트 · 네트워크 null model</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <script src="../../shared/test.js"></script>
+  <script src="model.js"></script>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question">테스트: 네트워크 null model (차수 보존 재배선)</h1>
+    <p>계산 부분(<code>model.js</code>)만 검사합니다. 파일을 더블클릭해 열어도 됩니다. 몬테카를로 검사가 있어 몇 초 걸립니다.
+      <a href="./">시뮬레이터로 돌아가기</a></p>
+    <div id="test-results"></div>
+  </main>
+
+  <script>
+    EduTest.run(function (T) {
+      const key = ([u, v]) => (u < v ? u * 1000 + v : v * 1000 + u);
+      const meanOf = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+
+      /* ---------------------------------------------------------------
+       * 1. 데이터: networkx의 karate_club_graph()와 같은지
+       *   nx.karate_club_graph(): 노드 34, 엣지 78, 차수 [d for _, d in G.degree()],
+       *   삼각형 sum(nx.triangles(G).values()) // 3 = 45,
+       *   nx.average_clustering(G) = 0.5706384782076823, nx.transitivity(G) = 0.2556818181818182,
+       *   G.nodes[i]['club'] == 'Mr. Hi' 인 노드 17개
+       * --------------------------------------------------------------- */
+      T.section('데이터: networkx karate_club_graph와 같은지');
+      {
+        const NX_DEG = [16, 9, 10, 6, 3, 4, 4, 4, 5, 2, 3, 1, 2, 5, 2, 2, 2, 2, 2, 3, 2, 2, 2, 5, 3, 3, 2, 4, 3, 4, 4, 6, 12, 17];
+        const NX_HI = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 16, 17, 19, 21];
+        const m = NN.metrics(NN.EDGES);
+        T.check('노드 34개, 엣지 78개, 자기루프·중복 없음', NN.N === 34 && NN.M === 78 && NN.EDGES.every(([u, v]) => u !== v) && new Set(NN.EDGES.map(key)).size === 78);
+        T.check('차수 수열이 networkx와 같음', NN.degrees(NN.EDGES).join() === NX_DEG.join());
+        T.check('삼각형 45개', m.tri === 45);
+        T.near('평균 뭉침 계수 = networkx average_clustering', m.avgC, 0.5706384782076823, 1e-14);
+        T.near('transitivity = networkx transitivity', m.trans, 0.2556818181818182, 1e-14);
+        T.check('파벌: Mr. Hi 17명 (networkx의 club 속성)', NN.CLUB.every((c, i) => c === (NX_HI.includes(i) ? 0 : 1)));
+        T.check('그림 위치: 노드 34개 모두 0 ~ 1 안, 서로 겹치지 않음 (거리 ≥ 0.05)', NN.POS.length === 34 && NN.POS.every((p) => p.every((v) => v >= 0 && v <= 1)) &&
+          NN.POS.every((p, i) => NN.POS.every((q, j) => i === j || Math.hypot(p[0] - q[0], p[1] - q[1]) >= 0.05)));
+      }
+
+      /* ---------------------------------------------------------------
+       * 2. R과 비교 — 기댓값: R 4.5.1 (webR). 엣지 목록을 그대로 넘겨 인접행렬로 계산
+       *   met <- function(E, n = 34) {
+       *     A <- matrix(0, n, n); A[cbind(E[, 1] + 1, E[, 2] + 1)] <- 1; A[cbind(E[, 2] + 1, E[, 1] + 1)] <- 1
+       *     k <- rowSums(A); A3 <- A %*% A %*% A
+       *     Ti <- diag(A3) / 2; Ci <- ifelse(k < 2, 0, Ti / choose(k, 2))
+       *     list(tri = sum(diag(A3)) / 6, avgC = mean(Ci), trans = (sum(diag(A3)) / 2) / sum(choose(k, 2)), k = k, Ci = Ci) }
+       *   OBS: 관측, G1: 시드 1의 null #1 (10×m), G2: 시드 1의 null #2 (0.1×m), G3: 시드 7의 null #1000 (50×m)
+       * --------------------------------------------------------------- */
+      const R = {
+        OBS: { tri: [45], avgC: [0.57063847820768232], trans: [0.25568181818181818], k: [16,9,10,6,3,4,4,4,5,2,3,1,2,5,2,2,2,2,2,3,2,2,2,5,3,3,2,4,3,4,4,6,12,17] },
+        G1: { tri: [42], avgC: [0.37403970500856315], trans: [0.23863636363636365], k: [16,9,10,6,3,4,4,4,5,2,3,1,2,5,2,2,2,2,2,3,2,2,2,5,3,3,2,4,3,4,4,6,12,17] },
+        G2: { tri: [46], avgC: [0.53745063087623646], trans: [0.26136363636363635], k: [16,9,10,6,3,4,4,4,5,2,3,1,2,5,2,2,2,2,2,3,2,2,2,5,3,3,2,4,3,4,4,6,12,17] },
+        G3: { tri: [45], avgC: [0.40013587431407499], trans: [0.25568181818181818], k: [16,9,10,6,3,4,4,4,5,2,3,1,2,5,2,2,2,2,2,3,2,2,2,5,3,3,2,4,3,4,4,6,12,17] },
+        OBS_LOCAL: [0.14999999999999999,0.33333333333333331,0.24444444444444444,0.66666666666666663,0.66666666666666663,0.5,0.5,1,0.5,0,0.66666666666666663,0,1,0.59999999999999998,1,1,1,1,1,0.33333333333333331,1,1,1,0.40000000000000002,0.33333333333333331,0.33333333333333331,1,0.16666666666666666,0.33333333333333331,0.66666666666666663,0.5,0.20000000000000001,0.19696969696969696,0.11029411764705882],
+      };
+      T.section('R과 비교: 삼각형 = tr(A³)/6, 노드별 C, transitivity, 차수');
+      {
+        const graphs = {
+          OBS: ['관측', NN.EDGES],
+          G1: ['시드 1, null #1, 10×m', NN.nullGraph(1, 0, NN.attemptsFor(10)).edges],
+          G2: ['시드 1, null #2, 0.1×m', NN.nullGraph(1, 1, NN.attemptsFor(0.1)).edges],
+          G3: ['시드 7, null #1000, 50×m (삼각형은 관측과 같은 45개인데 C는 다름)', NN.nullGraph(7, 999, NN.attemptsFor(50)).edges],
+        };
+        for (const [k, [name, E]] of Object.entries(graphs)) {
+          const m = NN.metrics(E), r = R[k];
+          const e = Math.max(Math.abs(m.tri - r.tri[0]), Math.abs(m.avgC - r.avgC[0]), Math.abs(m.trans - r.trans[0]));
+          T.check(name, e < 1e-14 && NN.degrees(E).join() === r.k.join(),
+            '삼각형 ' + m.tri + ', 평균 C ' + m.avgC.toFixed(6) + ', transitivity ' + m.trans.toFixed(6) + ' (가장 큰 차이 ' + e.toExponential(1) + ')');
+        }
+        const loc = NN.metrics(NN.EDGES).local, e = Math.max(...R.OBS_LOCAL.map((v, i) => Math.abs(loc[i] - v)));
+        T.check('관측 그래프의 노드별 C 34개 (차수 1인 노드 11은 0)', e < 1e-15 && loc[11] === 0, '가장 큰 차이 ' + e.toExponential(1));
+      }
+
+      /* ---------------------------------------------------------------
+       * 3. 재배선의 약속: 차수 그대로, 자기루프·중복 엣지 없음
+       * --------------------------------------------------------------- */
+      T.section('재배선 뒤: 차수 그대로, 자기루프 없음, 중복 엣지 없음');
+      {
+        const deg0 = NN.degrees(NN.EDGES).join();
+        let count = 0, okDeg = true, okLoop = true, okMulti = true, okM = true;
+        for (let seed = 1; seed <= 20; seed++) {
+          for (const mult of NN.SWAPS) {
+            for (const i of [0, 1, 500, 999]) {
+              const E = NN.nullGraph(seed, i, NN.attemptsFor(mult)).edges;
+              count++;
+              if (NN.degrees(E).join() !== deg0) okDeg = false;
+              if (E.some(([u, v]) => u === v)) okLoop = false;
+              if (new Set(E.map(key)).size !== E.length) okMulti = false;
+              if (E.length !== NN.M) okM = false;
+            }
+          }
+        }
+        T.check('karate, null 그래프 ' + count + '개 (시드 20 × 재배선 11단계 × 번호 4): 모든 노드의 차수가 관측과 같음', okDeg);
+        T.check('… 자기루프 없음', okLoop);
+        T.check('… 중복 엣지 없음', okMulti);
+        T.check('… 엣지 수 78 그대로', okM);
+        // 다른 그래프에서도: 무작위 그래프 200개를 각각 많이 재배선
+        const rng = EduSim.rng(99);
+        let ok = true;
+        for (let r = 0; r < 200; r++) {
+          const n = 5 + (r % 20), E = [];
+          for (let u = 0; u < n; u++) for (let v = u + 1; v < n; v++) if (rng.uniform() < 0.3) E.push([u, v]);
+          if (E.length < 2) continue;
+          const H = NN.rewire(E, 500, EduSim.rng(1000 + r), n).edges;
+          if (NN.degrees(H, n).join() !== NN.degrees(E, n).join() || H.some(([u, v]) => u === v) || new Set(H.map(key)).size !== H.length) ok = false;
+        }
+        T.check('무작위 그래프 200개(노드 5 ~ 24)를 500번씩 재배선해도 같은 약속', ok);
+        T.check('재배선 0번이면 관측 그래프 그대로', NN.nullGraph(3, 7, 0).edges.map(key).join() === NN.EDGES.map(key).join());
+      }
+
+      /* ---------------------------------------------------------------
+       * 4. null이 같은 차수의 그래프 전체에서 고르게 뽑히는지 (작은 그래프는 전부 나열할 수 있음)
+       * --------------------------------------------------------------- */
+      T.section('null의 균등성: 같은 차수를 가진 그래프를 모두 나열해 카이제곱');
+      for (const target of [[3, 2, 2, 2, 2, 1], [3, 3, 2, 2, 2, 2]]) {
+        const n = target.length, pairs = [];
+        for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) pairs.push([i, j]);
+        const m = target.reduce((a, b) => a + b, 0) / 2, all = [];
+        for (let mask = 0; mask < 1 << pairs.length; mask++) {
+          const d = new Array(n).fill(0);
+          let cnt = 0;
+          pairs.forEach(([a, b], k) => { if ((mask >> k) & 1) { d[a]++; d[b]++; cnt++; } });
+          if (cnt === m && d.every((x, i) => x === target[i])) all.push(mask);
+        }
+        const index = new Map(all.map((mk, i) => [mk, i])), pidx = new Map(pairs.map(([a, b], k) => [a * 100 + b, k]));
+        const start = pairs.filter((_, k) => (all[0] >> k) & 1);
+        const K = 20000, counts = new Array(all.length).fill(0);
+        for (let r = 0; r < K; r++) {
+          let mk = 0;
+          for (const [u, v] of NN.rewire(start, 60, EduSim.rng(5000 + r), n).edges) mk |= 1 << pidx.get(Math.min(u, v) * 100 + Math.max(u, v));
+          counts[index.get(mk)]++;
+        }
+        const e = K / all.length, chi = counts.reduce((s, o) => s + (o - e) ** 2 / e, 0), df = all.length - 1;
+        const z = (Math.cbrt(chi / df) - (1 - 2 / (9 * df))) / Math.sqrt(2 / (9 * df)); // 윌슨–힐퍼티: χ²가 크면 z가 큼
+        T.check('차수 ' + target.join(', ') + ': 그래프 ' + all.length + '가지에 고르게 (20,000번, 각 60번 시도, χ² 위쪽 꼬리 p > 0.001)',
+          z < 3.09 && counts.every((c) => c > 0), 'χ² = ' + chi.toFixed(1) + ' (자유도 ' + df + ', z = ' + z.toFixed(2) + '), 가장 적은 칸 ' + Math.min(...counts) + ' / 기대 ' + e.toFixed(0));
+      }
+
+      /* ---------------------------------------------------------------
+       * 5. 같은 난수: 시도를 한 번 더 하면 그래프가 최대 한 번만 더 바뀜 (슬라이더를 올리면 같은 null이 더 섞임)
+       * --------------------------------------------------------------- */
+      T.section('같은 난수, 시드');
+      {
+        let ok = true;
+        for (let i = 0; i < 50; i++) {
+          for (const a of [0, 5, 40, 200]) {
+            const A = new Set(NN.nullGraph(2, i, a).edges.map(key)), B = NN.nullGraph(2, i, a + 1).edges.map(key);
+            const diff = B.filter((k) => !A.has(k)).length;
+            if (diff > 2) ok = false;
+          }
+        }
+        T.check('시도 a번과 a + 1번의 그래프는 엣지가 많아야 2개 다름 (앞의 a번은 똑같이 진행)', ok);
+        const g1 = NN.nullGraph(4, 10, 300).edges.map(key).join();
+        T.check('같은 시드·같은 번호면 같은 null, 번호나 시드가 다르면 다른 null', g1 === NN.nullGraph(4, 10, 300).edges.map(key).join() &&
+          g1 !== NN.nullGraph(4, 11, 300).edges.map(key).join() && g1 !== NN.nullGraph(5, 10, 300).edges.map(key).join());
+      }
+
+      /* ---------------------------------------------------------------
+       * 6. Z와 p
+       * --------------------------------------------------------------- */
+      T.section('Z = (관측 − null 평균)/null 표준편차, p = (관측 이상인 null + 1)/(null 수 + 1)');
+      {
+        const s = NN.summary([1, 2, 3, 4, 5], 5, 4.5); // 평균 3, 표준편차 √2.5, 4.5 이상은 1개
+        T.check('작은 예: [1, 2, 3, 4, 5], 관측 4.5 → Z = 1.5/√2.5, p = 2/6', Math.abs(s.z - 1.5 / Math.sqrt(2.5)) < 1e-15 && s.p === 2 / 6 && s.ge === 1);
+        const t = NN.summary([1, 2, 3, 4, 5], 3, 4); // 앞의 3개만
+        T.check('처음 n개만 씀: n = 3이면 [1, 2, 3]', t.mean === 2 && t.sd === 1 && t.z === 2 && t.p === 1 / 4);
+        T.check('관측과 같은 값도 "이상"에 셈: [45, 40, 45], 관측 45 → p = 3/4', NN.summary([45, 40, 45], 3, 45).p === 3 / 4);
+        const z0 = NN.summary(NN.nullMetrics(1, 0, 50).avgC, 50, NN.metrics(NN.EDGES).avgC);
+        T.check('재배선 0번: null = 관측 → 표준편차 0, Z는 정할 수 없음, p = 1', z0.sd === 0 && Number.isNaN(z0.z) && z0.p === 1);
+        const none = NN.summary([], 0, 1);
+        T.check('null 0개: p = 1, 가장 작은 p = 1/(n + 1)', none.p === 1 && NN.summary([0], 1, 5).pMin === 1 / 2);
+      }
+      {
+        // 차수 보존 null에서 transitivity = 3 × 삼각형 / ΣC(k, 2), 분모가 고정 → Z와 p가 삼각형 수와 똑같음
+        let worst = 0, sameP = true;
+        const obs = NN.metrics(NN.EDGES);
+        for (const mult of [0.1, 1, 10]) {
+          const r = NN.nullMetrics(3, NN.attemptsFor(mult), 300);
+          const a = NN.summary(r.tri, 300, obs.tri), b = NN.summary(r.trans, 300, obs.trans);
+          worst = Math.max(worst, Math.abs(a.z - b.z));
+          if (a.ge !== b.ge) sameP = false;
+        }
+        T.check('transitivity와 삼각형 수의 Z·p가 같음 (차수가 같으니 분모가 같음)', worst < 1e-9 && sameP, 'Z 차이 최대 ' + worst.toExponential(1));
+      }
+
+      /* ---------------------------------------------------------------
+       * 7. 교재(그래프 04장) 표와 비교 — 교재는 networkx double_edge_swap(성공 10×m)과 거대 요소를 써서 방법이 조금 다름
+       *    교재: 평균 C 0.571, null 0.357 ± 0.049, Z 4.4 / 삼각형 45, null 39.5 ± 4.4, Z 1.2, p 0.141
+       * --------------------------------------------------------------- */
+      T.section('교재 표와 비교 (시드 1, 재배선 10×m, null 1,000개)');
+      const obs = NN.metrics(NN.EDGES), r10 = NN.nullMetrics(1, NN.attemptsFor(10));
+      {
+        const c = NN.summary(r10.avgC, 1000, obs.avgC), t = NN.summary(r10.tri, 1000, obs.tri);
+        T.check('평균 C: null 0.357 ± 0.049 (±0.01), Z > 3.5', Math.abs(c.mean - 0.357) < 0.01 && Math.abs(c.sd - 0.049) < 0.01 && c.z > 3.5,
+          c.mean.toFixed(3) + ' ± ' + c.sd.toFixed(3) + ', Z = ' + c.z.toFixed(2) + ', p = ' + (c.ge === 0 ? '≤ 1/1001' : c.p.toFixed(4)));
+        T.check('삼각형: null 39.5 ± 4.4 (±1, ±0.6), Z 0.8 ~ 1.6, p 0.08 ~ 0.2', Math.abs(t.mean - 39.5) < 1 && Math.abs(t.sd - 4.4) < 0.6 && t.z > 0.8 && t.z < 1.6 && t.p > 0.08 && t.p < 0.2,
+          t.mean.toFixed(1) + ' ± ' + t.sd.toFixed(1) + ', Z = ' + t.z.toFixed(2) + ', p = ' + t.p.toFixed(3));
+        T.check('재배선 시도 중 실제로 바뀐 비율 약 41% (교재의 성공 10×m ≈ 시도 25×m)', Math.abs(r10.success / (1000 * NN.attemptsFor(10)) - 0.41) < 0.02,
+          (100 * r10.success / (1000 * NN.attemptsFor(10))).toFixed(1) + '%');
+      }
+
+      /* ---------------------------------------------------------------
+       * 8. 재배선 횟수: 모자라면 null이 관측 쪽으로 치우침, 충분하면 안정 (허용 3 SE)
+       * --------------------------------------------------------------- */
+      T.section('재배선 횟수에 따른 null 평균 (시드 1, null 1,000개)');
+      {
+        const ref = { c: NN.summary(NN.nullMetrics(1, NN.attemptsFor(50)).avgC, 1000, obs.avgC), t: NN.summary(NN.nullMetrics(1, NN.attemptsFor(50)).tri, 1000, obs.tri) };
+        const close = (a, b) => Math.abs(a.mean - b.mean) <= 3 * Math.hypot(a.sd, b.sd) / Math.sqrt(1000);
+        const at = (mult) => { const r = mult === 10 ? r10 : NN.nullMetrics(1, NN.attemptsFor(mult)); return { c: NN.summary(r.avgC, 1000, obs.avgC), t: NN.summary(r.tri, 1000, obs.tri) }; };
+        const s01 = at(0.1);
+        T.check('0.1×m: null C가 아직 관측 쪽 (50×m보다 10 SE 넘게 큼)', s01.c.mean - ref.c.mean > 10 * Math.hypot(s01.c.sd, ref.c.sd) / Math.sqrt(1000),
+          s01.c.mean.toFixed(3) + ' vs ' + ref.c.mean.toFixed(3));
+        const ok = [5, 10, 20].every((mult) => { const s = at(mult); return close(s.c, ref.c) && close(s.t, ref.t); });
+        T.check('5×m, 10×m, 20×m: C와 삼각형 모두 50×m과 3 SE 안 (안정)', ok);
+        const s1 = at(1);
+        T.check('1×m: C는 이미 안정, 삼각형은 아직 아님 (지표마다 필요한 재배선이 다름)', close(s1.c, ref.c) && !close(s1.t, ref.t),
+          'C ' + s1.c.mean.toFixed(3) + ', 삼각형 ' + s1.t.mean.toFixed(2) + ' (50×m: ' + ref.c.mean.toFixed(3) + ', ' + ref.t.mean.toFixed(2) + ')');
+      }
+
+      T.section('수업 의도대로인지 (시드 10개, 재배선 10×m, null 1,000개)');
+      {
+        let ok = 0, zc = [], zt = [];
+        for (let seed = 1; seed <= 10; seed++) {
+          const r = seed === 1 ? r10 : NN.nullMetrics(seed, NN.attemptsFor(10));
+          const c = NN.summary(r.avgC, 1000, obs.avgC), t = NN.summary(r.tri, 1000, obs.tri);
+          zc.push(c.z); zt.push(t.z);
+          if (c.z > 3 && c.ge === 0 && t.z < 2 && t.p > 0.05) ok++;
+        }
+        T.check('평균 C는 Z > 3, p ≤ 1/1001 · 삼각형은 Z < 2, p > 0.05 (지표에 따라 결론이 갈림)', ok === 10,
+          ok + ' / 10, Z(C) ' + Math.min(...zc).toFixed(2) + ' ~ ' + Math.max(...zc).toFixed(2) + ', Z(삼각형) ' + Math.min(...zt).toFixed(2) + ' ~ ' + Math.max(...zt).toFixed(2));
+      }
+    });
+  </script>
+</body>
+</html>
