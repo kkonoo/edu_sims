@@ -7,7 +7,8 @@
 
 | 시뮬레이터 | 주소 | 쓰이는 교재 |
 |---|---|---|
-| 다중검정과 FDR | [`sims/multiple-testing/`](https://kkonoo.github.io/edu_sims/sims/multiple-testing/) | BI_for_Biomed_KNUmed, advanced_BI_for_MD_PhD_KNUmed |
+| 다중검정과 FDR | [`sims/multiple-testing/`](https://kkonoo.github.io/edu_sims/sims/multiple-testing/) | BI 입문(핵심 주제), 회귀(변수선택), 고급 BI(GWAS) |
+| 사전분포 × 가능도 → 사후분포 | [`sims/prior-posterior/`](https://kkonoo.github.io/edu_sims/sims/prior-posterior/) | 베이즈 W1–3 |
 
 ---
 
@@ -87,6 +88,19 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 | `method` | 보정 방법 | `none`, `bonf`, `bh` | `bh` |
 | `hist` | 히스토그램 | `stack`(겹쳐 쌓기), `pool`(합쳐 보기) | `stack` |
 
+**사전분포 × 가능도 → 사후분포** (`sims/prior-posterior/`)
+
+| 파라미터 | 뜻 | 값 | 기본 |
+|---|---|---|---|
+| `m0` | 사전 평균 | 0.01–0.99 (0.01 단위) | 0.5 |
+| `s0` | 사전 강도 a+b | 1, 2, 3, 5, 10, 20, 30, 50, 100, 200 | 2 (균등 Beta(1, 1)) |
+| `mode` | 데이터 | `draw`(뽑기), `input`(직접 입력) | `draw` |
+| `theta` | 참 반응률 θ* (뽑기) | 0.01–0.99 | 0.7 |
+| `ndraw` | 시행 수 (뽑기) | 0–10은 1씩, 그 위로 12, 15, 20 … 1000 | 20 |
+| `n`, `k` | 시행 수, 반응 수 (직접 입력) | n 0–200, k 0–n | 10, 7 |
+
+예: 교재 예제 "20명 중 14명 반응, 균등 사전분포"로 시작 → `?embed=1&mode=input&n=20&k=14&m0=0.5&s0=2`
+
 범위를 벗어난 값은 가장 가까운 허용값(또는 기본값)으로 바뀝니다.
 
 ---
@@ -114,8 +128,12 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
      ```js
      n:      { values: [10, 20, 50], default: 20 },             // 눈금 슬라이더
      p:      { min: 0, max: 1, step: 0.01, default: 0.5 },      // 연속 슬라이더
+     k:      { min: 0, max: (s) => s.n, step: 1, default: 3 },  // 범위가 다른 값에 따라 바뀜 (k ≤ n)
      method: { options: ['a', 'b'], default: 'a' },             // 라디오
      ```
+
+   - 숫자를 정확히 넣어야 하면 슬라이더 옆에 `<input type="number" data-param="이름">`을 둡니다(Enter나 칸을 벗어날 때 반영).
+   - 여러 값을 한 번에 바꾸는 버튼: `<button data-set='{"p":0.5,"n":20}'>`. 지금 값과 같으면 눌린 모양이 됩니다.
 
    - 난수는 `EduSim.rng(state.seed)`(`uniform()`, `normal()`)를 쓰면 다시 뽑기·시드 표시·URL이 자동으로 따라옵니다.
    - 그래프 색은 `EduSim.css('--c1')` ~ `--c4` (파랑·주황·청록·보라, 색각이상 검증 통과), 합친 값은 `--c-neutral`.
@@ -129,7 +147,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
      id: '새-이름',                                   // 폴더 이름
      title: { ko: '…', en: '…' },                     // text.js의 title과 같게
      question: { ko: '…', en: '…' },                  // text.js의 question과 같게
-     books: ['3_linear_regression'],                  // 아래 BOOKS의 키
+     books: [['3_linear_regression', '3부']],        // [BOOKS의 키, 어디에 쓰이는지] → 칩 "회귀 · 3부"
    },
    ```
 
@@ -143,7 +161,9 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 - 파일을 더블클릭해서 열어도 됩니다(그래프 라이브러리는 CDN에서 받으므로 인터넷은 필요).
 - 또는 저장소 폴더에서 `python3 -m http.server` 후 <http://localhost:8000>
-- 테스트: `sims/multiple-testing/test.html`을 열면 맨 위에 결과가 나옵니다(현재 38개). p값과 BH 보정값의 기댓값은 R 4.5.1에서 뽑았고, 그 R 코드가 테스트 파일 주석에 있습니다.
+- 테스트: 시뮬레이터 폴더의 `test.html`을 열면 맨 위에 결과가 나옵니다. 기댓값은 R 4.5.1에서 뽑았고, 그 R 코드가 각 테스트 파일 주석에 있습니다.
+  - `sims/multiple-testing/test.html` (38개): p값, BH 보정값(R `p.adjust`), 몬테카를로 FDR·FWER
+  - `sims/prior-posterior/test.html` (41개): `lgamma`·`dbeta`·`pbeta`·`qbeta`, 켤레 공식, 신용구간 포함률
 
 ## 구조
 
@@ -154,6 +174,7 @@ shared/sim.js               공통 모듈 EduSim: URL 상태, 언어, 난수, �
 shared/test.js              브라우저 테스트 도우미
 sims/_template/             새 시뮬레이터용 틀
 sims/multiple-testing/      다중검정과 FDR (index.html, text.js, model.js, main.js, test.html)
+sims/prior-posterior/       사전분포 × 가능도 → 사후분포 (같은 구성)
 quarto/edu-sims-resize.html Quarto include용 높이 자동 조절 스크립트
 .nojekyll                   GitHub Pages가 _template 폴더도 그대로 서빙하도록
 ```

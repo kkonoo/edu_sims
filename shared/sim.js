@@ -9,6 +9,7 @@
  *    params: {                                  // URL과 동기화되는 조작값
  *      n:      { values: [10, 20, 50], default: 20 },             // 눈금 슬라이더
  *      p:      { min: 0, max: 1, step: 0.01, default: 0.5 },     // 연속 슬라이더
+ *      k:      { min: 0, max: (s) => s.n, step: 1, default: 3 }, // 범위가 다른 값에 따라 바뀜 (앞에 정의된 값만 참조)
  *      method: { options: ['a', 'b'], default: 'a' },            // 라디오
  *    },
  *    render(state, sim) { ... },                // 값이 바뀔 때마다 한 프레임에 한 번 호출
@@ -16,6 +17,8 @@
  *
  *  HTML 쪽 약속
  *    <input type="range" data-param="n">        범위·눈금은 params에서 자동 설정
+ *    <input type="number" data-param="n">       숫자 직접 입력 (Enter나 칸을 벗어날 때 반영)
+ *    <button data-set='{"p":0.5,"n":20}'>       여러 값을 한 번에 (지금 값과 같으면 aria-pressed="true")
  *    <input type="radio" name="method" value="a">
  *    <output data-out="n">                      현재 값 표시 (params[n].format 이 있으면 사용)
  *    <span data-t="key">                        문구 교체 (자식 요소가 없는 요소에만)
@@ -113,16 +116,19 @@
   /* ---------- URL 값 해석 ---------- */
   function decimals(x) { var s = String(x); var i = s.indexOf('.'); return i < 0 ? 0 : s.length - i - 1; }
 
-  function parseParam(def, raw) {
+  function bound(b, state) { return typeof b === 'function' ? b(state) : b; }
+
+  function parseParam(def, raw, state) {
     if (def.options) return def.options.indexOf(raw) >= 0 ? raw : def.default;
     var v = raw == null || raw === '' ? NaN : Number(raw);
     if (!isFinite(v)) return def.default;
     if (def.values) { // 가장 가까운 눈금으로
       return def.values.reduce(function (best, x) { return Math.abs(x - v) < Math.abs(best - v) ? x : best; });
     }
-    v = Math.min(def.max, Math.max(def.min, v));
-    var k = Math.round((v - def.min) / def.step);
-    return Number((def.min + k * def.step).toFixed(decimals(def.step)));
+    var min = bound(def.min, state), max = bound(def.max, state);
+    v = Math.min(max, Math.max(min, v));
+    var k = Math.round((v - min) / def.step);
+    return Number((min + k * def.step).toFixed(decimals(def.step)));
   }
 
   function parseSeed(raw) {
@@ -141,7 +147,7 @@
     };
 
     var state = {};
-    Object.keys(params).forEach(function (name) { state[name] = parseParam(params[name], query.get(name)); });
+    Object.keys(params).forEach(function (name) { state[name] = parseParam(params[name], query.get(name), state); });
     if (useSeed) state.seed = parseSeed(query.get('seed'));
 
     // 사전에 없는 키는 ⟦key⟧로 보여서 빠진 번역이 바로 눈에 띔
@@ -183,10 +189,21 @@
     ranges.forEach(function (el) {
       var name = el.dataset.param, def = params[name];
       if (def.values) { el.min = 0; el.max = def.values.length - 1; el.step = 1; }
-      else { el.min = def.min; el.max = def.max; el.step = def.step; }
+      else el.step = def.step;
       el.addEventListener('input', function () {
         var patch = {};
-        patch[name] = def.values ? def.values[Number(el.value)] : parseParam(def, el.value);
+        patch[name] = def.values ? def.values[Number(el.value)] : parseParam(def, el.value, state);
+        set(patch);
+      });
+    });
+    // 숫자 칸: 입력 도중(예: "14"를 치는 중 "1")에 반영되지 않도록 change에서만 반영
+    var numbers = document.querySelectorAll('input[type="number"][data-param]');
+    numbers.forEach(function (el) {
+      var name = el.dataset.param, def = params[name];
+      el.step = def.values ? 'any' : def.step;
+      el.addEventListener('change', function () {
+        var patch = {};
+        patch[name] = parseParam(def, el.value, state);
         set(patch);
       });
     });
@@ -200,6 +217,16 @@
     });
 
     document.addEventListener('click', function (e) {
+      var preset = e.target.closest('[data-set]');
+      if (preset) {
+        var raw = JSON.parse(preset.dataset.set), patch = {};
+        Object.keys(raw).forEach(function (name) {
+          var def = params[name];
+          patch[name] = def.options ? (def.options.indexOf(raw[name]) >= 0 ? raw[name] : def.default) : parseParam(def, raw[name], state);
+        });
+        set(patch);
+        return;
+      }
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
       if (btn.dataset.action === 'reroll' && useSeed) set({ seed: EduSim.newSeed(state.seed) });
@@ -209,8 +236,18 @@
     function syncControls() {
       ranges.forEach(function (el) {
         var def = params[el.dataset.param], v = state[el.dataset.param];
+        if (!def.values) { el.min = bound(def.min, state); el.max = bound(def.max, state); } // max를 먼저 바꿔야 value가 잘리지 않음
         el.value = def.values ? def.values.indexOf(v) : v;
-        el.style.setProperty('--p', (100 * (el.value - el.min) / (el.max - el.min)) + '%');
+        el.style.setProperty('--p', (100 * (el.value - el.min) / ((el.max - el.min) || 1)) + '%');
+      });
+      numbers.forEach(function (el) {
+        var def = params[el.dataset.param];
+        if (!def.values) { el.min = bound(def.min, state); el.max = bound(def.max, state); }
+        el.value = state[el.dataset.param];
+      });
+      document.querySelectorAll('[data-set]').forEach(function (el) {
+        var raw = JSON.parse(el.dataset.set);
+        el.setAttribute('aria-pressed', String(Object.keys(raw).every(function (k) { return state[k] === raw[k]; })));
       });
       radios.forEach(function (el) { el.checked = state[el.name] === el.value; });
       document.querySelectorAll('[data-out]').forEach(function (el) {
@@ -257,6 +294,11 @@
 
     function set(patch) {
       Object.assign(state, patch);
+      // 범위가 다른 값에 따라 바뀌는 조작값은 다시 범위 안으로 (예: n을 줄이면 k ≤ n)
+      Object.keys(params).forEach(function (name) {
+        var def = params[name];
+        if (typeof def.min === 'function' || typeof def.max === 'function') state[name] = parseParam(def, state[name], state);
+      });
       syncControls();
       writeURL();
       schedule();

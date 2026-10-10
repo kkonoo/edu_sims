@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>edu_sims</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <!-- 차트: Observable Plot (d3가 먼저 있어야 함). 버전 고정 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/dist/plot.umd.min.js"></script>
+  <style>
+    .context { margin: -0.5rem 0 0; color: var(--ink-2); }
+    .ab { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -0.4rem; }
+    .presets { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .observed { font-size: 0.9rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+    .stats-card .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .stats-card .stat .v { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+    #stat-ci, #stat-post { font-size: 1.15rem; }
+    @media (max-width: 480px) { #stat-ci, #stat-post { font-size: 0.95rem; } }
+
+    .wavg { margin: 0 0 0.6rem; font-variant-numeric: tabular-nums; }
+    .wavg .dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; margin: 0 0.25rem 0 0.1rem; }
+    .wbar { display: flex; height: 0.9rem; border-radius: 999px; overflow: hidden; gap: 2px; background: var(--surface); }
+    .wbar > div { min-width: 2px; }
+    .wbar-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--ink-2); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question" data-t="question"></h1>
+    <p class="context" data-t="context"></p>
+
+    <div class="sim-layout">
+      <section class="card panel" aria-labelledby="panel-title">
+        <h2 class="card-title" id="panel-title" data-t="panel"></h2>
+
+        <h3 class="panel-sub" data-t="priorHead"></h3>
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="m0" data-t="m0"></label><output for="m0" data-out="m0"></output></div>
+          <input type="range" id="m0" data-param="m0">
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="s0" data-t="s0"></label><output for="s0" data-out="s0"></output></div>
+          <input type="range" id="s0" data-param="s0">
+        </div>
+        <div class="ab" id="prior-ab"></div>
+        <div class="presets">
+          <button type="button" class="btn btn-sm" data-set='{"m0":0.5,"s0":2}' data-t="uniform"></button>
+          <button type="button" class="btn btn-sm" data-set='{"m0":0.5,"s0":1}' data-t="jeffreys"></button>
+        </div>
+
+        <h3 class="panel-sub" id="data-label" data-t="dataHead"></h3>
+        <div class="seg" role="radiogroup" aria-labelledby="data-label">
+          <label><input type="radio" name="mode" value="draw"><span data-t="draw"></span></label>
+          <label><input type="radio" name="mode" value="input"><span data-t="input"></span></label>
+        </div>
+
+        <div class="panel" id="mode-draw">
+          <div class="ctrl">
+            <div class="ctrl-head"><label for="theta" data-t="theta"></label><output for="theta" data-out="theta"></output></div>
+            <input type="range" id="theta" data-param="theta">
+          </div>
+          <div class="ctrl">
+            <div class="ctrl-head"><label for="ndraw" data-t="ndraw"></label><output for="ndraw" data-out="ndraw"></output></div>
+            <input type="range" id="ndraw" data-param="ndraw">
+          </div>
+          <div class="observed" id="observed"></div>
+          <div class="seed-row">
+            <button type="button" class="btn" data-action="reroll" data-t="reroll"></button>
+            <span class="seed" data-seed></span>
+          </div>
+        </div>
+
+        <div class="panel" id="mode-input">
+          <div class="ctrl">
+            <div class="ctrl-head"><label for="n" data-t="n"></label><input type="number" inputmode="numeric" data-param="n" data-t-aria="n"></div>
+            <input type="range" id="n" data-param="n">
+          </div>
+          <div class="ctrl">
+            <div class="ctrl-head"><label for="k" data-t="k"></label><input type="number" inputmode="numeric" data-param="k" data-t-aria="k"></div>
+            <input type="range" id="k" data-param="k">
+          </div>
+        </div>
+      </section>
+
+      <div class="sim-figs">
+        <section class="card stats-card" aria-live="polite">
+          <div class="stats">
+            <div class="stat"><div class="k" data-t="statMean"></div><div class="v" id="stat-mean"></div></div>
+            <div class="stat"><div class="k" data-t="statCI"></div><div class="v" id="stat-ci"></div></div>
+            <div class="stat"><div class="k" data-t="statPost"></div><div class="v" id="stat-post"></div></div>
+          </div>
+        </section>
+
+        <figure class="card fig">
+          <figcaption class="card-title" data-t="figTitle"></figcaption>
+          <div id="chart"></div>
+          <div class="legend">
+            <span class="key"><span class="ln" style="border-color: var(--c1)"></span><span data-t="legendPrior"></span></span>
+            <span class="key"><span class="ln dash" style="border-color: var(--c-neutral)"></span><span data-t="legendLik"></span></span>
+            <span class="key"><span class="ln" style="border-color: var(--c2)"></span><span data-t="legendPost"></span></span>
+            <span class="key"><span class="sw" style="background: var(--c2); opacity: 0.25"></span><span data-t="legendCI"></span></span>
+            <span class="key" id="legend-true"><span class="ln dot-line" style="border-color: var(--ink)"></span><span data-t="legendTrue"></span></span>
+          </div>
+        </figure>
+
+        <section class="card" aria-labelledby="weight-title">
+          <h2 class="card-title" id="weight-title" data-t="weightTitle"></h2>
+          <p class="wavg" id="wavg"></p>
+          <div class="wbar" aria-hidden="true">
+            <div id="wbar-prior" style="background: var(--c1)"></div>
+            <div id="wbar-data" style="background: var(--c-neutral)"></div>
+          </div>
+          <div class="wbar-labels"><span id="wlab-prior"></span><span id="wlab-data"></span></div>
+        </section>
+      </div>
+    </div>
+
+    <section class="card tasks">
+      <h2 data-t="tasksTitle"></h2>
+      <ol>
+        <li data-t-html="task1"></li>
+        <li data-t-html="task2"></li>
+        <li data-t-html="task3"></li>
+      </ol>
+    </section>
+
+    <details class="card explain">
+      <summary data-t="explainTitle"></summary>
+      <div data-t-html="explain"></div>
+    </details>
+  </main>
+
+  <script src="text.js"></script>
+  <script src="model.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

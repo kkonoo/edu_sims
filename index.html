@@ -65,7 +65,10 @@
         const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         document.getElementById('gallery').innerHTML = SIMS.map((s) => {
           const href = 'sims/' + s.id + '/' + (lang === 'en' ? '?lang=en' : '');
-          const books = s.books.map((b) => '<a href="' + BOOK_URL(b) + '">' + esc(BOOKS[b].name) + '</a>').join('');
+          const books = s.books.map(([id, where]) => {
+            const label = BOOKS[id].name[lang] + (where ? ' · ' + (typeof where === 'string' ? where : where[lang]) : '');
+            return '<a href="' + BOOK_URL(id) + '">' + esc(label) + '</a>';
+          }).join('');
           return '<article class="card sim-card">' +
             '<div class="accent"></div>' +
             '<h2><a href="' + href + '">' + esc(s.title[lang]) + '</a></h2>' +

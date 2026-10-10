@@ -114,6 +114,16 @@ html.embed .card { box-shadow: none; }
 .ctrl { display: flex; flex-direction: column; gap: 0.15rem; }
 .ctrl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
 .ctrl-head label, .ctrl-head .label { font-weight: 600; font-size: 0.95rem; }
+.panel-sub {
+  margin: 0.4rem 0 -0.4rem; padding-top: 0.6rem; border-top: 1px solid var(--line);
+  font-size: 0.85rem; font-weight: 700; color: var(--muted);
+}
+.card-title + .panel-sub { margin-top: 0; padding-top: 0; border-top: 0; }
+.ctrl-head input[type="number"] {
+  width: 4.75rem; text-align: right; font-variant-numeric: tabular-nums; font-weight: 650;
+  background: var(--page); border: 1px solid var(--line); border-radius: 6px; padding: 0.05rem 0.3rem;
+}
+.ctrl-head input[type="number"]:focus-visible { outline: 2px solid var(--c1); outline-offset: 1px; }
 .ctrl-head output {
   font-variant-numeric: tabular-nums; font-weight: 650;
   background: var(--page); border-radius: 6px; padding: 0 0.4rem; white-space: nowrap;

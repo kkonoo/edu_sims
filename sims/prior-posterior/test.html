@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>테스트 · 사전분포 × 가능도 → 사후분포</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <script src="../../shared/test.js"></script>
+  <script src="model.js"></script>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question">테스트: 사전분포 × 가능도 → 사후분포</h1>
+    <p>계산 부분(<code>model.js</code>)만 검사합니다. 파일을 더블클릭해 열어도 됩니다.
+      <a href="./">시뮬레이터로 돌아가기</a></p>
+    <div id="test-results"></div>
+  </main>
+
+  <script>
+    EduTest.run(function (T) {
+      const fmt = EduTest.fmt;
+
+      /* ---------------------------------------------------------------
+       * 1. 특수함수 — 기댓값: R 4.5.1 (webR)에서 sprintf("%.17g", ...) 실행 결과
+       *   lgamma(c(0.5, 2.5, 10, 100.5, 1000))
+       *   dbeta(x, a, b), pbeta(x, a, b), qbeta(c(0.025, 0.5, 0.975), a, b)
+       * --------------------------------------------------------------- */
+      T.section('log Γ(x): R lgamma와 비교');
+      [[0.5, 0.57236494292470008], [2.5, 0.28468287047291918], [10, 12.801827480081469],
+        [100.5, 361.43554046777757], [1000, 5905.2204232091808]]
+        .forEach(([x, r]) => T.near('lgamma(' + x + ')', BB.lgamma(x), r, 1e-12));
+      T.check('lgamma(1) = 0', Math.abs(BB.lgamma(1)) < 1e-14, '실제 ' + BB.lgamma(1));
+
+      T.section('Beta 밀도·누적확률·분위수: R dbeta / pbeta / qbeta와 비교');
+      [[0.3, 2, 5, 2.1608999999999998], [0.5, 0.5, 0.5, 0.63661977236758116], [0.01, 0.5, 0.5, 3.1991347258556524],
+        [0.7, 15, 9, 3.2727147279719171], [0.95, 200, 10, 25.378686118455963], [0.2, 1, 1, 1], [0.999, 3, 0.7, 12.735374085546979]]
+        .forEach(([x, a, b, r]) => T.near('dbeta(' + x + ', ' + a + ', ' + b + ')', BB.dbeta(x, a, b), r, 1e-12));
+      [[0.3, 2, 5, 0.57982500000000015], [0.5, 0.5, 0.5, 0.49999999999999956], [0.1, 0.5, 0.5, 0.20483276469913345],
+        [0.7, 15, 9, 0.77085503779566134], [0.9, 200, 10, 0.0019952082927795784], [0.999, 3, 0.7, 0.98178517509046104],
+        [1e-4, 2, 50, 1.2708424876127613e-05]]
+        .forEach(([x, a, b, r]) => T.near('pbeta(' + x + ', ' + a + ', ' + b + ')', BB.pbeta(x, a, b), r, 1e-12));
+      const Q_REF = [
+        [15, 9, [0.42734396303649436, 0.62852669787448845, 0.80292357603098563]],
+        [0.5, 0.5, [0.0015413331334360124, 0.49999999999999989, 0.99845866686656404]],
+        [1, 1, [0.025, 0.5, 0.975]],
+        [1, 201, [0.00012595131117045972, 0.0034425542112207982, 0.018185250054386204]], // 균등 사전 + 200명 중 0명
+        [201, 1, [0.98181474994561369, 0.99655744578877925, 0.99987404868882956]],
+        [2.5, 497.5, [0.00083378410321818179, 0.004357229643938215, 0.01279504406518972]],
+      ];
+      for (const [a, b, r] of Q_REF) {
+        const got = [0.025, 0.5, 0.975].map((p) => BB.qbeta(p, a, b));
+        const worst = Math.max(...got.map((g, i) => Math.abs(g - r[i]) / r[i]));
+        T.check('qbeta(0.025 / 0.5 / 0.975, ' + a + ', ' + b + ')', worst <= 1e-10,
+          '가장 큰 상대오차 ' + worst.toExponential(1) + ' · 실제 [' + got.map(fmt).join(', ') + ']');
+      }
+
+      /* ---------------------------------------------------------------
+       * 2. 켤레 공식: 사전 × 가능도를 촘촘한 격자에서 수치로 곱하고 넓이 1로 맞춘 것 = Beta(a + k, b + n − k)
+       * --------------------------------------------------------------- */
+      T.section('켤레 공식: 수치 계산한 사후분포 = Beta(a + k, b + n − k)');
+      for (const [a, b, n, k] of [[1, 1, 20, 14], [10, 40, 50, 37], [2, 3, 5, 0], [3, 2, 12, 12], [1.5, 6, 30, 4]]) {
+        const N = 20000, h = 1 / N;
+        const xs = Array.from({ length: N }, (_, i) => (i + 0.5) * h); // 중점 격자
+        const un = xs.map((x) => BB.dbeta(x, a, b) * x ** k * (1 - x) ** (n - k)); // 사전 × 가능도 (정규화 전)
+        const Z = un.reduce((s, v) => s + v, 0) * h;
+        const post = BB.update(a, b, n, k);
+        let worst = 0, peak = 0;
+        xs.forEach((x, i) => {
+          const exact = BB.dbeta(x, post.a, post.b);
+          peak = Math.max(peak, exact);
+          worst = Math.max(worst, Math.abs(un[i] / Z - exact));
+        });
+        T.check('사전 Beta(' + a + ', ' + b + '), ' + n + '번 중 ' + k + '번 → Beta(' + post.a + ', ' + post.b + ')',
+          worst / peak < 1e-6, '가장 큰 차이 / 최대 밀도 = ' + (worst / peak).toExponential(1));
+      }
+
+      T.section('사후 평균 = w × 사전 평균 + (1 − w) × 표본 비율, 95% 구간');
+      {
+        const rng = EduSim.rng(99);
+        let worstMean = 0, worstTail = 0;
+        for (let i = 0; i < 200; i++) {
+          const a = 0.1 + rng.uniform() * 50, b = 0.1 + rng.uniform() * 50;
+          const n = 1 + Math.floor(rng.uniform() * 500), k = Math.floor(rng.uniform() * (n + 1));
+          const u = BB.update(a, b, n, k);
+          worstMean = Math.max(worstMean, Math.abs(u.mean - (u.w * u.priorMean + (1 - u.w) * u.sampleProp)));
+          worstTail = Math.max(worstTail, Math.abs(BB.pbeta(u.lo, u.a, u.b) - 0.025), Math.abs(BB.pbeta(u.hi, u.a, u.b) - 0.975));
+        }
+        T.check('무작위 200가지 (a, b, n, k): 가중평균 항등식', worstMean < 1e-12, '가장 큰 차이 ' + worstMean.toExponential(1));
+        T.check('무작위 200가지: 구간 양 끝의 누적확률이 0.025, 0.975', worstTail < 1e-12, '가장 큰 차이 ' + worstTail.toExponential(1));
+        const u0 = BB.update(2, 3, 0, 0);
+        T.check('데이터가 없으면(n = 0) 사후 = 사전, 사전 비중 w = 1', u0.a === 2 && u0.b === 3 && u0.w === 1 && isNaN(u0.sampleProp));
+      }
+
+      /* ---------------------------------------------------------------
+       * 3. 몬테카를로: θ를 사전분포에서 뽑고 그 θ로 데이터를 만들면,
+       *    95% 신용구간은 θ를 약 95% 포함하고 사후 평균은 평균적으로 θ와 같아야 함
+       *    사전 Beta(2, 3)는 균등난수 4개 중 두 번째로 작은 값으로 뽑음
+       * --------------------------------------------------------------- */
+      T.section('몬테카를로: 베이즈 신용구간의 포함률 (4,000회)');
+      {
+        const REPS = 4000, a = 2, b = 3, n = 20;
+        const rng = EduSim.rng(2025);
+        const byK = Array.from({ length: n + 1 }, (_, k) => BB.update(a, b, n, k)); // k별 사후분포는 21가지뿐
+        let covered = 0, sumErr = 0, sumErr2 = 0;
+        for (let r = 0; r < REPS; r++) {
+          const us = [rng.uniform(), rng.uniform(), rng.uniform(), rng.uniform()].sort((x, y) => x - y);
+          const theta = us[1];
+          let k = 0;
+          for (let i = 0; i < n; i++) if (rng.uniform() < theta) k++;
+          const p = byK[k];
+          if (theta >= p.lo && theta <= p.hi) covered++;
+          const e = theta - p.mean; sumErr += e; sumErr2 += e * e;
+        }
+        const cov = covered / REPS, se = Math.sqrt(0.95 * 0.05 / REPS);
+        T.check('사전 Beta(2, 3), n = 20: 95% 구간이 참 θ를 포함한 비율 ≈ 0.95', Math.abs(cov - 0.95) <= 3 * se,
+          '비율 ' + cov.toFixed(4) + ' · 허용 ±' + (3 * se).toFixed(4) + ' (3 SE)');
+        const mErr = sumErr / REPS, seErr = Math.sqrt((sumErr2 / REPS - mErr * mErr) / REPS);
+        T.check('참 θ − 사후 평균의 평균 ≈ 0', Math.abs(mErr) <= 3 * seErr,
+          '평균 ' + mErr.toFixed(5) + ' · 허용 ±' + (3 * seErr).toFixed(5) + ' (3 SE)');
+      }
+
+      /* ---------------------------------------------------------------
+       * 4. 뽑기 모드의 데이터
+       * --------------------------------------------------------------- */
+      T.section('뽑기: 시드와 관측열');
+      {
+        T.check('같은 시드면 같은 성공 수', BB.drawSuccesses(0.7, 500, 42) === BB.drawSuccesses(0.7, 500, 42));
+        let differ = false;
+        for (let s = 1; s <= 20 && !differ; s++) if (BB.drawSuccesses(0.5, 100, s) !== BB.drawSuccesses(0.5, 100, s + 100)) differ = true;
+        T.check('시드가 다르면 다른 결과가 나옴', differ);
+        let prefixOK = true, prev = 0;
+        for (let n = 1; n <= 1000; n++) {
+          const k = BB.drawSuccesses(0.4, n, 7);
+          if (k < prev || k > prev + 1) prefixOK = false;
+          prev = k;
+        }
+        T.check('n을 하나씩 늘리면 성공 수는 그대로이거나 1 늘어남 (앞쪽 관측 유지)', prefixOK);
+        let monoOK = true, prevK = -1;
+        for (let th = 0.01; th <= 0.99; th += 0.01) {
+          const k = BB.drawSuccesses(th, 300, 7);
+          if (k < prevK) monoOK = false;
+          prevK = k;
+        }
+        T.check('θ*를 올리면 성공 수가 줄지 않음 (같은 시드)', monoOK);
+        const SEEDS = 2000, n = 50, th = 0.3;
+        let sum = 0;
+        for (let s = 1; s <= SEEDS; s++) sum += BB.drawSuccesses(th, n, s);
+        const mean = sum / SEEDS, se = Math.sqrt(n * th * (1 - th) / SEEDS);
+        T.check('θ* = 0.3, n = 50: 시드 2,000개의 평균 성공 수 ≈ nθ = 15', Math.abs(mean - n * th) <= 3 * se,
+          '평균 ' + mean.toFixed(3) + ' · 허용 ±' + (3 * se).toFixed(3) + ' (3 SE)');
+      }
+    });
+  </script>
+</body>
+</html>
