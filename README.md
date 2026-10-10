@@ -13,6 +13,7 @@
 | 최소제곱: 잔차·이상치·leverage | [`sims/least-squares/`](https://kkonoo.github.io/edu_sims/sims/least-squares/) | 회귀 1·3부, 선형대수 9장 |
 | Ridge와 Lasso: λ와 수축 | [`sims/ridge-lasso/`](https://kkonoo.github.io/edu_sims/sims/ridge-lasso/) | 회귀 5부, 베이즈 W8 |
 | 교란변수와 배치효과 | [`sims/confounding/`](https://kkonoo.github.io/edu_sims/sims/confounding/) | BI 입문(핵심 주제), 고급 BI(연구설계), 회귀 |
+| PCA·SVD: 저랭크 근사 | [`sims/pca-svd/`](https://kkonoo.github.io/edu_sims/sims/pca-svd/) | 선형대수 13·15장, BI 입문(scRNA), 고급 BI(single-cell) |
 
 ---
 
@@ -152,6 +153,18 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 예: 수업에서 "배치를 모를 때" 그림부터 보여 주고 나중에 켜기 → `?embed=1&batch=off`
 
+**PCA·SVD: 저랭크 근사** (`sims/pca-svd/`)
+
+| 파라미터 | 뜻 | 값 | 기본 |
+|---|---|---|---|
+| `data` | 데이터 | `img`(120 × 120 합성 이미지), `cells`(가상 세포 300 × 유전자 40) | `img` |
+| `ki` | 이미지 탭의 랭크 k (남길 조각 수) | 1–120 | 5 |
+| `kc` | 세포 탭의 랭크 k | 1–40 | 2 |
+| `center` | 세포 탭: 유전자마다 평균 빼기 (켜면 PCA, 끄면 그냥 SVD) | `on`, `off` | `on` |
+| `seed` | 이미지의 무늬·도형 위치와 세포 데이터를 함께 정하는 시드 | 1–99999 | 1 |
+
+예: 관찰 과제 "중심화를 끄고 k = 1" → `?embed=1&data=cells&center=off&kc=1`
+
 범위를 벗어난 값은 가장 가까운 허용값(또는 기본값)으로 바뀝니다.
 
 ---
@@ -222,6 +235,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
   - `sims/least-squares/test.html` (25개): R `lm`의 계수·R²·σ̂·`hatvalues`·`rstandard`·`cooks.distance`, 잔차의 직교성, Cook 거리 정의
   - `sims/confounding/test.html` (31개): R `lm(y ~ x)`·`lm(y ~ x + factor(batch))`의 계수·표준오차, `qt`, 누락변수 편향 공식과 신뢰구간 포함률(몬테카를로), 완전 교란 감지
   - `sims/ridge-lasso/test.html` (29개): Ridge 닫힌 해(R), Lasso의 KKT 조건·직교 설계의 정확한 해·λ 극한, 경로의 단조성, 기하 그림의 접점 (glmnet은 이 작업 환경에서 설치할 수 없어 비교하지 않음)
+  - `sims/pca-svd/test.html` (43개): R `svd()`(작은 행렬 6개: 가로·세로로 긴 것, 랭크 부족, 중근, 힐베르트 / 시드 1 이미지의 특잇값 120개), R `prcomp()`의 sdev·loading·점수·누적 비율, 직교성·복원·에카르트–영(오차 공식과 "가장 가까움"), 모양별 랭크, 드문 유형 D가 PC3(중심화 안 하면 PC4)에 나오는지(시드 100개), 수렴 속도
 
 ## 구조
 
@@ -237,6 +251,7 @@ sims/matrix-2x2/            2×2 행렬과 고유벡터 (같은 구성, 차트 �
 sims/least-squares/         최소제곱: 잔차·이상치·leverage (같은 구성)
 sims/ridge-lasso/           Ridge와 Lasso: λ와 수축 (같은 구성)
 sims/confounding/           교란변수와 배치효과 (같은 구성)
+sims/pca-svd/               PCA·SVD: 저랭크 근사 (같은 구성, 행렬 그림은 캔버스)
 quarto/edu-sims-resize.html Quarto include용 높이 자동 조절 스크립트
 .nojekyll                   GitHub Pages가 _template 폴더도 그대로 서빙하도록
 ```

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>edu_sims</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <!-- 차트: Observable Plot (d3가 먼저 있어야 함). 버전 고정 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/dist/plot.umd.min.js"></script>
+  <style>
+    .note { font-size: 0.8rem; color: var(--muted); margin: -0.3rem 0 0; }
+    .ctrl-head input[type="number"] { width: 4rem; }
+    .presets { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .presets .btn-sm { min-width: 2.25rem; padding: 0.2rem 0.45rem; }
+
+    .stats-card .stats { grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); }
+    .stats-card .stat .v { font-size: 1.3rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .stats-card .stat .v small { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); }
+
+    /* 행렬 그림(캔버스): 데이터 한 칸 = 픽셀 하나, 크게 볼 때 흐려지지 않게 */
+    canvas.mat { display: block; image-rendering: pixelated; image-rendering: crisp-edges; border-radius: 4px; }
+    .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+    .trio canvas.mat { width: 100%; height: auto; }
+    .cap { font-size: 0.8rem; color: var(--ink-2); margin: 0.2rem 0 0; line-height: 1.3; }
+
+    .heat { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); column-gap: 0.3rem; }
+    .heat .band { grid-column: 2; height: 0.6rem; width: 100%; border-radius: 3px 3px 0 0; }
+    .heat .blocks { display: flex; flex-direction: column; font-size: 0.75rem; font-weight: 700; text-align: center; }
+    .heat .blocks span { display: flex; align-items: center; justify-content: center; min-height: 0; }
+    .heat canvas.mat { width: 100%; height: 7.5rem; border-radius: 0; }
+    .heat .cap { grid-column: 2; margin: 0.15rem 0 0.5rem; }
+
+    .ramps { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; font-size: 0.8rem; color: var(--ink-2); margin-top: 0.4rem; }
+    .ramps .key { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .ramps .ramp { width: 4rem; height: 0.6rem; border-radius: 3px; display: inline-block; border: 1px solid var(--line); }
+    .ramps .sw { width: 0.7rem; height: 0.7rem; border-radius: 2px; display: inline-block; }
+
+    .pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
+    @media (min-width: 1040px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+    .piece-img { display: grid; gap: 3px; margin: 0.2rem auto 0; }
+    .piece-sub { font-size: 0.8rem; color: var(--ink-2); margin: 0.4rem 0 0; }
+    #piece-plots .sub { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); margin: 0.2rem 0 0; }
+
+    .fig-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 0.75rem; }
+    .fig-head .fig-note { font-weight: 600; font-size: 0.85rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .tasks ol[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question" data-t="question"></h1>
+
+    <div class="sim-layout">
+      <section class="card panel" aria-labelledby="panel-title">
+        <h2 class="card-title" id="panel-title" data-t="panel"></h2>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><span class="label" id="data-label" data-t="dataHead"></span></div>
+          <div class="seg" role="radiogroup" aria-labelledby="data-label">
+            <label><input type="radio" name="data" value="img"><span data-t="dataImg"></span></label>
+            <label><input type="radio" name="data" value="cells"><span data-t="dataCells"></span></label>
+          </div>
+        </div>
+        <p class="note" id="data-note"></p>
+
+        <div class="ctrl" id="ctrl-ki">
+          <div class="ctrl-head"><label for="ki" id="ki-label" data-t="kLabel"></label><input type="number" data-param="ki" aria-labelledby="ki-label"></div>
+          <input type="range" id="ki" data-param="ki">
+          <div class="presets" id="presets-ki"></div>
+        </div>
+        <div class="ctrl" id="ctrl-kc">
+          <div class="ctrl-head"><label for="kc" id="kc-label" data-t="kLabel"></label><input type="number" data-param="kc" aria-labelledby="kc-label"></div>
+          <input type="range" id="kc" data-param="kc">
+          <div class="presets" id="presets-kc"></div>
+        </div>
+
+        <div id="center-row">
+          <label class="check"><input type="checkbox" data-param="center"><span data-t="center"></span></label>
+          <p class="note" data-t="centerNote"></p>
+        </div>
+
+        <div class="seed-row">
+          <button type="button" class="btn" data-action="reroll" data-t="reroll"></button>
+          <span class="seed" data-seed></span>
+        </div>
+      </section>
+
+      <div class="sim-figs">
+        <section class="card stats-card" aria-live="polite">
+          <div class="stats">
+            <div class="stat"><div class="k" data-t="statK"></div><div class="v" id="stat-k"></div></div>
+            <div class="stat"><div class="k" data-t="statErr"></div><div class="v" id="stat-err"></div></div>
+            <div class="stat"><div class="k" id="stat-kept-k"></div><div class="v" id="stat-kept"></div></div>
+            <div class="stat" id="stat-store-box"><div class="k" data-t="statStore"></div><div class="v" id="stat-store"></div></div>
+          </div>
+        </section>
+
+        <figure class="card fig" id="fig-img">
+          <figcaption class="card-title" data-t="matTitleImg"></figcaption>
+          <div class="trio">
+            <div><canvas class="mat" id="img-orig" role="img" data-t-aria="capOrig"></canvas><p class="cap" data-t="capOrig"></p></div>
+            <div><canvas class="mat" id="img-approx" role="img"></canvas><p class="cap" id="img-approx-cap"></p></div>
+            <div><canvas class="mat" id="img-resid" role="img" data-t-aria="capResid"></canvas><p class="cap" data-t="capResid"></p></div>
+          </div>
+          <div class="ramps">
+            <span class="key"><span data-t="legendLow"></span><span class="ramp" id="ramp-seq"></span><span data-t="legendHigh"></span></span>
+            <span class="key"><span data-t="legendNeg"></span><span class="ramp" id="ramp-div"></span><span data-t="legendPos"></span></span>
+          </div>
+        </figure>
+
+        <figure class="card fig" id="fig-cells">
+          <figcaption class="card-title" data-t="matTitleCells"></figcaption>
+          <div class="heat" id="heat"></div>
+          <div class="ramps">
+            <span class="key"><span data-t="legendLow"></span><span class="ramp" id="ramp-seq2"></span><span data-t="legendHigh"></span></span>
+            <span class="key"><span data-t="legendNeg"></span><span class="ramp" id="ramp-div2"></span><span data-t="legendPos"></span></span>
+            <span class="key" id="type-keys"></span>
+          </div>
+          <p class="note" style="margin-top: 0.3rem" data-t="blockNote"></p>
+        </figure>
+
+        <div class="pair">
+          <figure class="card fig">
+            <figcaption class="card-title" id="piece-title"></figcaption>
+            <div id="piece-img-wrap">
+              <div class="piece-img" id="piece-img">
+                <span></span><canvas class="mat" id="piece-v" role="img"></canvas>
+                <canvas class="mat" id="piece-u" role="img"></canvas><canvas class="mat" id="piece-a" role="img"></canvas>
+              </div>
+              <p class="piece-sub" id="piece-formula"></p>
+            </div>
+            <div id="piece-plots">
+              <p class="sub" id="scores-title"></p>
+              <div id="scores"></div>
+              <p class="sub" id="loadings-title"></p>
+              <div id="loadings"></div>
+            </div>
+            <p class="piece-sub" id="piece-sigma"></p>
+          </figure>
+
+          <figure class="card fig">
+            <figcaption class="card-title fig-head"><span data-t="screeTitle"></span><span class="fig-note" id="scree-note"></span></figcaption>
+            <div id="scree"></div>
+            <div class="legend">
+              <span class="key"><span class="dot fill" style="background: var(--c1); border-color: var(--c1)"></span><span data-t="legendKept"></span></span>
+              <span class="key"><span class="dot"></span><span data-t="legendDropped"></span></span>
+            </div>
+          </figure>
+        </div>
+      </div>
+    </div>
+
+    <section class="card tasks">
+      <h2 data-t="tasksTitle"></h2>
+      <ol id="tasks-img">
+        <li data-t-html="taskImg1"></li>
+        <li data-t-html="taskImg2"></li>
+        <li data-t-html="taskImg3"></li>
+      </ol>
+      <ol id="tasks-cells">
+        <li data-t-html="taskCells1"></li>
+        <li data-t-html="taskCells2"></li>
+        <li data-t-html="taskCells3"></li>
+      </ol>
+    </section>
+
+    <details class="card explain">
+      <summary data-t="explainTitle"></summary>
+      <div data-t-html="explain"></div>
+    </details>
+  </main>
+
+  <script src="text.js"></script>
+  <script src="model.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

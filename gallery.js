@@ -83,4 +83,17 @@ const SIMS = [
       ['3_linear_regression', ''],
     ],
   },
+  {
+    id: 'pca-svd',
+    title: { ko: 'PCA·SVD: 저랭크 근사', en: 'PCA and SVD: low-rank approximation' },
+    question: {
+      ko: '행렬을 조각 k개만 남기고 버리면, 무엇이 살아남을까?',
+      en: 'Keep only k pieces of a matrix and throw the rest away. What survives?',
+    },
+    books: [
+      ['2_linear_algebra', { ko: '13·15장', en: 'ch. 13, 15' }],
+      ['BI_for_Biomed_KNUmed', 'scRNA'],
+      ['advanced_BI_for_MD_PhD_KNUmed', 'single-cell'],
+    ],
+  },
 ];
