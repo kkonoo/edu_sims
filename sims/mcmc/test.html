@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>테스트 · MCMC</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <script src="../../shared/test.js"></script>
+  <script src="model.js"></script>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question">테스트: MCMC (랜덤워크 Metropolis, ESS, R̂)</h1>
+    <p>계산 부분(<code>model.js</code>)만 검사합니다. 파일을 더블클릭해 열어도 됩니다. 몬테카를로 검사가 있어 몇 초 걸립니다.
+      <a href="./">시뮬레이터로 돌아가기</a></p>
+    <div id="test-results"></div>
+  </main>
+
+  <script>
+    EduTest.run(function (T) {
+      const b = MC.burnFrom(MC.N);
+      const keep = (tg, tau, seed, m) => MC.noise(seed, 4).slice(0, m).map((z, c) => Array.from(MC.run(tg, tau, MC.STARTS[tg.kind][c], z).x.slice(b)));
+      const meanOf = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+      const sdOf = (a) => { const m = meanOf(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1)); };
+
+      /* ---------------------------------------------------------------
+       * 1. 교재(베이즈 W6)의 R 함수와 비교 — 기댓값: R 4.5.1 (webR)
+       *    체인 값은 이 model.js가 만든 것을 17자리로 그대로 R에 넘김
+       *
+       *   split_rhat <- function(sims) {
+       *     sims <- as.matrix(sims); n <- nrow(sims); h <- floor(n / 2)
+       *     sp <- cbind(sims[1:h, , drop = FALSE], sims[(n - h + 1):n, , drop = FALSE])
+       *     n_s <- nrow(sp); w <- mean(apply(sp, 2, var)); b <- n_s * var(colMeans(sp))
+       *     sqrt((((n_s - 1) / n_s) * w + b / n_s) / w) }
+       *   var_plus_hat <- function(sims) {
+       *     sims <- as.matrix(sims); n <- nrow(sims); m <- ncol(sims)
+       *     ((n - 1) / n) * mean(apply(sims, 2, var)) + if (m > 1) var(colMeans(sims)) else 0 }
+       *   ess_basic <- function(sims) {
+       *     sims <- as.matrix(sims); n0 <- nrow(sims); h <- floor(n0 / 2)
+       *     sp <- cbind(sims[1:h, , drop = FALSE], sims[(n0 - h + 1):n0, , drop = FALSE])
+       *     n <- nrow(sp); m <- ncol(sp); w <- mean(apply(sp, 2, var)); var_plus <- var_plus_hat(sp)
+       *     if (!is.finite(var_plus) || var_plus <= 0) return(NA_real_)
+       *     acov <- sapply(seq_len(m), function(j)
+       *       acf(sp[, j], lag.max = n - 1, type = "covariance", plot = FALSE)$acf[, 1, 1])
+       *     rho <- 1 - (w - rowMeans(as.matrix(acov))) / var_plus
+       *     n_pair <- floor(length(rho) / 2)
+       *     pair <- cummin(rho[2 * (1:n_pair) - 1] + rho[2 * (1:n_pair)])
+       *     keep <- which(pair < 0)[1] - 1; if (is.na(keep)) keep <- n_pair
+       *     tau <- -1 + 2 * (if (keep >= 1) sum(pair[1:keep]) else 0)
+       *     m * n / max(tau, 1 / log10(m * n)) }
+       *   for (x in list(A, B, C, D, E, Fm)) F(c(ess_basic(x), split_rhat(x), var_plus_hat(x)))
+       *   ACF_A: acf(A[, 1], lag.max = 200, type = "covariance")$acf[c(1, 2, 6, 51, 201)] * nrow(A)
+       * --------------------------------------------------------------- */
+      const R = {
+        A: { ess: [205.01706062949194], rhat: [1.0023419295509748], vplus: [0.85706994249969115] },
+        B: { ess: [5.720178727378209], rhat: [1.8567043123440723], vplus: [14.984052295144634] },
+        C: { ess: [4.9979371912995481], rhat: [2.3684350799421274], vplus: [2.2614389970745159] },
+        D: { ess: [3000], rhat: [0.9991043802793087], vplus: [1.68782778137696] },
+        E: { ess: [12.039825270087812], rhat: [1.0110111940355948], vplus: [1.2012909834106311] },
+        Fm: { ess: [12.9501749525715], rhat: [0.82525185684575697], vplus: [1.3709183673469389] },
+        ACF_A: [3857.6718111911214,3499.2135402452182,2529.2068749382929,-416.55243349229823,61.464173530291653],
+      };
+      const AR = (() => { const rng = EduSim.rng(9), out = []; let v = 0; for (let t = 0; t < 1001; t++) { v = -0.6 * v + rng.normal(); out.push(v); } return [out]; })();
+      const SETS = [
+        ['A', '상관 정규 ρ = 0.9, τ = 1, 체인 1개 (번인 뒤 4,501개)', keep(MC.normal(0.9), 1, 1, 1)],
+        ['B', '두 봉우리, τ = 0.5, 체인 4개 (봉우리에 갇힘)', keep(MC.bimodal(), 0.5, 1, 4)],
+        ['C', '상관 정규 ρ = 0.99, τ = 0.05, 체인 4개 (거의 안 움직임)', keep(MC.normal(0.99), 0.05, 3, 4)],
+        ['D', '반상관 AR(1), φ = −0.6 (ESS > 표본 수, τ̂ 하한에 걸림)', AR],
+        ['E', '길이가 홀수(101)인 체인 (split에서 가운데를 버림)', [Array.from(MC.run(MC.normal(0.9), 1, MC.STARTS.norm[0], MC.noise(2, 1)[0]).x.slice(0, 101))]],
+        ['Fm', '아주 짧은 체인 2개 (길이 7)', [[0.3, -1.2, 2.5, 0.7, 0.1, -0.4, 1.9], [1.1, 0.2, -0.8, 0.5, 2.2, -1.5, 0.9]]],
+      ];
+      T.section('교재 W6의 R 함수(ess_basic, split_rhat, var_plus_hat)와 비교');
+      for (const [key, name, x] of SETS) {
+        const r = R[key];
+        const e1 = Math.abs(MC.essBasic(x) - r.ess[0]) / r.ess[0];
+        const e2 = Math.abs(MC.splitRhat(x) - r.rhat[0]) / r.rhat[0];
+        const e3 = Math.abs(MC.varPlus(x) - r.vplus[0]) / r.vplus[0];
+        T.check(key + ': ' + name, Math.max(e1, e2, e3) < 1e-10,
+          'ESS ' + MC.essBasic(x).toFixed(3) + ' (R ' + r.ess[0].toFixed(3) + '), R̂ ' + MC.splitRhat(x).toFixed(4) + ', 상대오차 ' + Math.max(e1, e2, e3).toExponential(1));
+      }
+      {
+        const a = SETS[0][2][0], mu = meanOf(a), ac = MC.autocov(a.map((v) => v - mu));
+        const got = [0, 1, 5, 50, 200].map((k) => ac[k]);
+        const e = Math.max(...got.map((v, i) => Math.abs(v - R.ACF_A[i]) / Math.abs(R.ACF_A[0])));
+        T.check('FFT 자기공분산 = R acf(type = "covariance") × n (시차 0, 1, 5, 50, 200)', e < 1e-12, '가장 큰 상대오차 ' + e.toExponential(1));
+      }
+      {
+        // 모든 시차에서 정의대로 Σᵢ cᵢ cᵢ₊ₖ (FFT의 0 채우기가 모자라면 큰 시차에 앞쪽 값이 섞여 들어감)
+        const rng = EduSim.rng(4), c = Array.from({ length: 301 }, () => rng.normal()), ac = MC.autocov(c);
+        let e = 0;
+        for (let k = 0; k < c.length; k++) { let s = 0; for (let i = 0; i + k < c.length; i++) s += c[i] * c[i + k]; e = Math.max(e, Math.abs(s - ac[k])); }
+        const a = SETS[0][2][0], mu = meanOf(a), cen = a.map((v) => v - mu), big = MC.autocov(cen);
+        let e2 = 0;
+        for (const k of [3000, 4000, 4500]) { let s = 0; for (let i = 0; i + k < cen.length; i++) s += cen[i] * cen[i + k]; e2 = Math.max(e2, Math.abs(s - big[k]) / big[0]); }
+        T.check('FFT 자기공분산 = 직접 더한 값 (길이 301의 모든 시차, 길이 4,501의 큰 시차)', e < 1e-10 && e2 < 1e-12, '가장 큰 차이 ' + e.toExponential(1) + ', ' + e2.toExponential(1));
+      }
+      T.check('값이 모두 같은 체인 → ESS를 정할 수 없음 (R도 NA)', Number.isNaN(MC.essBasic([new Array(50).fill(1.5)])));
+
+      /* ---------------------------------------------------------------
+       * 2. 수용률: 정확한 값과 비교 (목표에서 출발한 체인 여러 개, 허용 3 SE)
+       *   정규 목표 N(0, Σ)와 제안 N(0, τ²I)에서 걸음 z가 정해지면 log 비율 ~ N(−τ²Q/2, τ²Q), Q = zᵀΣ⁻¹z
+       *   → E[min(1, 비율) | z] = 2Φ(−τ√Q/2). z를 극좌표로 쓰면 반지름 방향 적분이 닫힌 꼴:
+       *   a(τ, ρ) = (1/2π) ∫ [1 − c(θ)/√(1 + c(θ)²)] dθ,  c(θ) = (τ/2)·√(cos²θ/(1+ρ) + sin²θ/(1−ρ))
+       *   (ρ = 0이면 1 − τ/√(τ² + 4))
+       * --------------------------------------------------------------- */
+      const exactAcc = (tau, rho) => {
+        const K = 4000;
+        let s = 0;
+        for (let i = 0; i < K; i++) {
+          const th = (2 * Math.PI * (i + 0.5)) / K;
+          const c = (tau / 2) * Math.sqrt(Math.cos(th) ** 2 / (1 + rho) + Math.sin(th) ** 2 / (1 - rho));
+          s += 1 - c / Math.sqrt(1 + c * c);
+        }
+        return s / K;
+      };
+      // 목표에서 뽑은 점에서 출발한 체인 M개의 수용률 (체인끼리 독립 → 평균의 SE = sd/√M)
+      const stationaryAcc = (tg, tau, M, seed) => {
+        const rng = EduSim.rng(seed), acc = [];
+        for (let c = 0; c < M; c++) acc.push(MC.acceptRate(MC.run(tg, tau, tg.sample(rng), MC.noise(seed * 1000 + c, 1)[0]), MC.N));
+        return { m: meanOf(acc), se: sdOf(acc) / Math.sqrt(M) };
+      };
+      T.section('수용률 = 정확한 값 (정규 목표, 목표에서 출발한 체인 40개 × 5,000걸음, 허용 3 SE)');
+      for (const [rho, tau] of [[0, 2.4], [0.9, 0.05], [0.9, 1], [0.9, 5], [0.99, 1]]) {
+        const ex = exactAcc(tau, rho), r = stationaryAcc(MC.normal(rho), tau, 40, 11 + Math.round(rho * 100) + Math.round(tau * 10));
+        T.check('ρ = ' + rho + ', τ = ' + tau + ': 정확한 값 ' + ex.toFixed(4), Math.abs(r.m - ex) <= 3 * r.se,
+          '체인 ' + r.m.toFixed(4) + ' ± ' + r.se.toFixed(4) + ' (z = ' + ((r.m - ex) / r.se).toFixed(2) + ')');
+      }
+      T.check('ρ = 0의 닫힌 꼴 1 − τ/√(τ² + 4)와 적분식이 같음', Math.abs(exactAcc(2.4, 0) - (1 - 2.4 / Math.sqrt(2.4 ** 2 + 4))) < 1e-12);
+      {
+        // 두 봉우리: 목표에서 독립으로 뽑은 점 x와 걸음 z로 E[min(1, π(x + τz)/π(x))]를 따로 잼
+        const tg = MC.bimodal();
+        for (const tau of [0.5, 4]) {
+          const rng = EduSim.rng(77 + tau), K = 200000;
+          let s = 0, s2 = 0;
+          for (let i = 0; i < K; i++) {
+            const [x, y] = tg.sample(rng), a = Math.min(1, Math.exp(tg.logp(x + tau * rng.normal(), y + tau * rng.normal()) - tg.logp(x, y)));
+            s += a; s2 += a * a;
+          }
+          const iid = s / K, seI = Math.sqrt((s2 / K - iid * iid) / K);
+          const r = stationaryAcc(tg, tau, 40, 300 + tau * 10);
+          const se = Math.hypot(seI, r.se);
+          T.check('두 봉우리, τ = ' + tau + ': 체인의 수용률 = 목표에서 독립으로 잰 평균 수용확률' + (tau === 0.5 ? ' (봉우리에 갇혀도)' : ''),
+            Math.abs(r.m - iid) <= 3 * se, '체인 ' + r.m.toFixed(4) + ', 독립 ' + iid.toFixed(4) + ' (z = ' + ((r.m - iid) / se).toFixed(2) + ')');
+        }
+      }
+
+      /* ---------------------------------------------------------------
+       * 3. 정상분포: 목표에서 출발한 체인들은 몇 걸음 뒤에도 목표를 따름 (체인 300개의 마지막 값, 허용 3 SE)
+       * --------------------------------------------------------------- */
+      T.section('정상분포 유지: 목표에서 출발한 체인 300개의 5,000걸음 뒤 값');
+      const ensemble = (tg, tau, seed) => {
+        const rng = EduSim.rng(seed), pts = [];
+        for (let c = 0; c < 300; c++) { const r = MC.run(tg, tau, tg.sample(rng), MC.noise(seed * 1000 + c, 1)[0]); pts.push([r.x[MC.N], r.y[MC.N]]); }
+        return pts;
+      };
+      const momentCheck = (label, vals, exact) => {
+        const m = meanOf(vals), se = sdOf(vals) / Math.sqrt(vals.length);
+        T.check(label + ' = ' + exact, Math.abs(m - exact) <= 3 * se, m.toFixed(3) + ' ± ' + se.toFixed(3) + ' (z = ' + ((m - exact) / se).toFixed(2) + ')');
+      };
+      {
+        const p = ensemble(MC.normal(0.9), 1, 21);
+        momentCheck('상관 정규 ρ = 0.9, τ = 1: E[x₁]', p.map((d) => d[0]), 0);
+        momentCheck('… E[x₁²]', p.map((d) => d[0] ** 2), 1);
+        momentCheck('… E[x₁x₂]', p.map((d) => d[0] * d[1]), 0.9);
+        const q = ensemble(MC.bimodal(), 0.5, 22);
+        momentCheck('두 봉우리, τ = 0.5 (각 체인은 갇혀도 전체로는 목표 유지): P(x₁ > 0)', q.map((d) => (d[0] > 0 ? 1 : 0)), 0.5);
+        momentCheck('… E[x₁²] (A² + 1)', q.map((d) => d[0] ** 2), MC.A ** 2 + 1);
+      }
+
+      /* ---------------------------------------------------------------
+       * 4. ESS의 뜻: 체인 평균의 실제 분산 ≈ 분산 / ESS
+       * --------------------------------------------------------------- */
+      T.section('ESS의 뜻: Var(체인 평균) ≈ Var(x₁) / ESS');
+      {
+        const tg = MC.normal(0.9), rng = EduSim.rng(31), M = 200, L = 2000, means = [], ess = [];
+        for (let c = 0; c < M; c++) {
+          const x = Array.from(MC.run(tg, 1, tg.sample(rng), MC.noise(31000 + c, 1)[0]).x.slice(0, L));
+          means.push(meanOf(x)); ess.push(MC.essBasic([x]));
+        }
+        const v = sdOf(means) ** 2, me = meanOf(ess), ratio = v * me;
+        // Var(x₁) = 1. 표본분산의 상대 SE ≈ √(2/(M − 1)) ≈ 0.1 → 허용 ±0.3
+        T.check('ρ = 0.9, τ = 1, 체인 200개 × 2,000: Var(평균) × 평균 ESS ≈ 1', Math.abs(ratio - 1) <= 0.3,
+          'Var(평균) ' + v.toFixed(5) + ', 평균 ESS ' + me.toFixed(1) + ', 곱 ' + ratio.toFixed(3));
+      }
+
+      /* ---------------------------------------------------------------
+       * 5. 목표분포
+       * --------------------------------------------------------------- */
+      T.section('목표분포: 정규화, 주변분포, logp와 밀도');
+      for (const [name, tg, X, Y] of [['상관 정규 ρ = 0.9', MC.normal(0.9), 8, 8], ['상관 정규 ρ = 0.99', MC.normal(0.99), 8, 8], ['두 봉우리', MC.bimodal(), 10, 6]]) {
+        const h = 0.02;
+        let tot = 0;
+        for (let x = -X + h / 2; x < X; x += h) for (let y = -Y + h / 2; y < Y; y += h) tot += tg.density(x, y) * h * h;
+        let em = 0, cst = [];
+        for (const x of [-4.5, -1.3, 0, 0.7, 2.2, 4]) {
+          let s = 0;
+          for (let y = -Y + h / 2; y < Y; y += h) s += tg.density(x, y) * h;
+          em = Math.max(em, Math.abs(s - tg.marg(x)));
+          cst.push(tg.logp(x, x / 3 - 0.4) - Math.log(tg.density(x, x / 3 - 0.4)));
+        }
+        const spread = Math.max(...cst) - Math.min(...cst);
+        T.check(name + ': ∫∫밀도 = 1, ∫밀도 dx₂ = 주변밀도, logp − log 밀도 = 상수', Math.abs(tot - 1) < 1e-4 && em < 1e-4 && spread < 1e-9,
+          '적분 ' + tot.toFixed(6) + ', 주변분포 차 ' + em.toExponential(1) + ', 상수의 흔들림 ' + spread.toExponential(1));
+      }
+      T.check('두 봉우리 logp: 아주 먼 점에서도 유한 (log(0) 없음)', Number.isFinite(MC.bimodal().logp(60, -40)));
+      {
+        // sample(): 위 검사들에서 "목표에서 출발"할 때 쓰는 독립표본 (체인은 출발점을 곧 잊으므로 따로 확인)
+        const rng = EduSim.rng(41), K = 20000;
+        const p = Array.from({ length: K }, () => MC.normal(0.9).sample(rng));
+        const zs = [[p.map((d) => d[0]), 0], [p.map((d) => d[1] ** 2), 1], [p.map((d) => d[0] * d[1]), 0.9]]
+          .map(([v, ex]) => (meanOf(v) - ex) / (sdOf(v) / Math.sqrt(K)));
+        const q = Array.from({ length: K }, () => MC.bimodal().sample(rng));
+        zs.push(...[[q.map((d) => (d[0] > 0 ? 1 : 0)), 0.5], [q.map((d) => d[0] ** 2), MC.A ** 2 + 1], [q.map((d) => d[1] ** 2), 1]]
+          .map(([v, ex]) => (meanOf(v) - ex) / (sdOf(v) / Math.sqrt(K))));
+        T.check('sample(): 정규 ρ = 0.9의 E[x₁], E[x₂²], E[x₁x₂]와 두 봉우리의 P(x₁ > 0), E[x₁²], E[x₂²] (독립표본 20,000개, 3 SE)',
+          zs.every((z) => Math.abs(z) <= 3), 'z = ' + zs.map((z) => z.toFixed(2)).join(', '));
+      }
+
+      /* ---------------------------------------------------------------
+       * 6. 알고리즘
+       * --------------------------------------------------------------- */
+      T.section('알고리즘: 수용·기각, 같은 난수, 번인');
+      {
+        const tg = MC.normal(0.9), z = MC.noise(5, 1)[0], r = MC.run(tg, 1, [-3, 3], z);
+        let okAcc = true, okRej = true, okRule = true, okProp = true;
+        for (let t = 0; t < MC.N; t++) {
+          if (r.acc[t]) { if (r.x[t + 1] !== r.px[t] || r.y[t + 1] !== r.py[t]) okAcc = false; }
+          else if (r.x[t + 1] !== r.x[t] || r.y[t + 1] !== r.y[t]) okRej = false;
+          const lr = tg.logp(r.px[t], r.py[t]) - tg.logp(r.x[t], r.y[t]);
+          if ((z.lu[t] < lr) !== (r.acc[t] === 1)) okRule = false;
+          if (Math.abs(r.px[t] - r.x[t] - z.z1[t]) > 1e-12 || Math.abs(r.py[t] - r.y[t] - z.z2[t]) > 1e-12) okProp = false;
+        }
+        T.check('수용하면 다음 상태 = 제안', okAcc);
+        T.check('기각하면 지금 값을 한 번 더 기록', okRej);
+        T.check('수용 규칙: log u < log π(제안) − log π(지금)', okRule);
+        T.check('제안 = 지금 + τ·(z₁, z₂)', okProp);
+        const r5 = MC.run(tg, 5, [-3, 3], z);
+        T.check('τ를 바꿔도 같은 난수: 첫 걸음의 제안 방향이 같음', Math.abs((r5.px[0] + 3) / 5 - (r.px[0] + 3)) < 1e-12 && Math.abs((r5.py[0] - 3) / 5 - (r.py[0] - 3)) < 1e-12);
+        T.check('수용률 = 수용한 걸음 수 / 걸음 수', MC.acceptRate(r, 100) === r.acc.slice(0, 100).reduce((s, v) => s + v, 0) / 100);
+        T.check('같은 시드 → 같은 체인, 다른 시드 → 다른 체인',
+          MC.run(tg, 1, [-3, 3], MC.noise(5, 1)[0]).x.every((v, i) => v === r.x[i]) && MC.run(tg, 1, [-3, 3], MC.noise(6, 1)[0]).x[100] !== r.x[100]);
+        const z4 = MC.noise(5, 4)[0];
+        T.check('체인 4개로 뽑아도 체인 1의 난수는 같음 (1개 ↔ 4개를 바꿔도 체인 1이 그대로)', z4.z1.every((v, i) => v === z.z1[i]) && z4.lu.every((v, i) => v === z.lu[i]));
+        T.check('번인: n걸음(상태 n + 1개)의 앞 10%', MC.burnFrom(5000) === 500 && MC.burnFrom(99) === 10 && MC.burnFrom(0) === 0);
+        T.check('출발점: 체인 4개가 모두 다른 곳, 체인 1은 목표의 좁은 쪽으로 멀리', new Set(MC.STARTS.norm.map(String)).size === 4 && MC.normal(0.9).logp(...MC.STARTS.norm[0]) < -50);
+      }
+
+      /* ---------------------------------------------------------------
+       * 7. 수업 의도대로인지 (시드 30개)
+       * --------------------------------------------------------------- */
+      T.section('수업 의도대로인지 (시드 30개)');
+      {
+        let ord = 0, rho99 = 0, stuck = 0, healthy = 0, good = 0, bad = 0, worstGood = 0, minBad = Infinity;
+        for (let s = 1; s <= 30; s++) {
+          const e = [0.05, 1, 5].map((t) => MC.essBasic(keep(MC.normal(0.9), t, s, 1)));
+          if (e[1] > e[2] && e[2] > e[0]) ord++;
+          if (MC.essBasic(keep(MC.normal(0.99), 1, s, 1)) < e[1]) rho99++;
+          const z = MC.noise(s, 1)[0], r = MC.run(MC.bimodal(), 0.5, MC.STARTS.bimodal[0], z), k = Array.from(r.x.slice(b));
+          if (k.every((v) => v < 0) || k.every((v) => v > 0)) {
+            stuck++;
+            if (MC.acceptRate(r, MC.N) > 0.7 && MC.essBasic([k]) > 50) healthy++;
+          }
+          const g = MC.splitRhat(keep(MC.bimodal(), 4, s, 4)), w = MC.splitRhat(keep(MC.bimodal(), 0.5, s, 4));
+          if (g < 1.05) good++;
+          if (w > 1.1) bad++;
+          worstGood = Math.max(worstGood, g); minBad = Math.min(minBad, w);
+        }
+        T.check('상관 정규 ρ = 0.9: ESS가 τ = 1 > τ = 5 > τ = 0.05 (버튼 "적당히 > 너무 크게 > 너무 작게")', ord >= 27, ord + ' / 30');
+        T.check('ρ = 0.99로 올리면 τ = 1의 ESS가 줄어듦', rho99 >= 27, rho99 + ' / 30');
+        T.check('두 봉우리, τ = 0.5, 체인 1개: 번인 뒤 내내 한쪽 봉우리에만', stuck >= 21, stuck + ' / 30');
+        T.check('… 그래도 수용률 > 70%, ESS > 50 ("멀쩡해 보임")', healthy === stuck, healthy + ' / ' + stuck);
+        T.check('체인 4개의 R̂: τ = 4면 < 1.05, τ = 0.5면 > 1.1', good === 30 && bad === 30, 'τ = 4 최대 ' + worstGood.toFixed(3) + ', τ = 0.5 최소 ' + minBad.toFixed(2));
+      }
+      {
+        // 처음 열었을 때(시드 1)의 화면이 설명과 맞는지
+        const k1 = keep(MC.bimodal(), 0.5, 1, 1)[0];
+        T.check('시드 1: 두 봉우리 τ = 0.5 체인 1개는 왼쪽 봉우리에 갇힘', k1.every((v) => v < 0));
+        const e = [0.05, 1, 5].map((t) => MC.essBasic(keep(MC.normal(0.9), t, 1, 1)));
+        T.check('시드 1: 상관 정규 ρ = 0.9의 ESS 순서 (적당히 > 너무 크게 > 너무 작게)', e[1] > e[2] && e[2] > e[0], e.map((v) => v.toFixed(0)).join(', '));
+      }
+    });
+  </script>
+</body>
+</html>

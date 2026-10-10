@@ -96,4 +96,13 @@ const SIMS = [
       ['advanced_BI_for_MD_PhD_KNUmed', 'single-cell'],
     ],
   },
+  {
+    id: 'mcmc',
+    title: { ko: 'MCMC: 제안 폭과 체인의 움직임', en: 'MCMC: proposal width and how the chain moves' },
+    question: {
+      ko: '한 걸음을 얼마나 크게 내디뎌야 체인이 목표분포를 잘 돌아다닐까?',
+      en: 'How big should each step be for the chain to explore the target well?',
+    },
+    books: [['4_Bayes', 'W5–6']],
+  },
 ];

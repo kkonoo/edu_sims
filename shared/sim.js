@@ -14,6 +14,7 @@
  *      pts:    { str: true, default: '' },                        // 문자열 그대로 (비어 있으면 URL에 안 씀)
  *    },
  *    render(state, sim) { ... },                // 값이 바뀔 때마다 한 프레임에 한 번 호출
+ *    play: { param: 'n', speed: 'speed' },      // (선택) 재생: n을 초당 speed(조작값 이름 또는 숫자)만큼 늘림
  *  });
  *
  *  HTML 쪽 약속
@@ -26,6 +27,8 @@
  *    <span data-t="key">                        문구 교체 (자식 요소가 없는 요소에만)
  *    <p data-t-html="key">                      HTML 문구 교체 (설명처럼 <b> 등이 필요할 때)
  *    <button data-action="reroll">              다시 뽑기
+ *    <button data-action="play">                재생 ↔ 멈춤 (opts.play가 있을 때). 끝에서 누르면 처음부터
+ *    <button data-action="rewind">              처음으로 (재생 중이면 계속 재생)
  *    <span data-seed>                           "시드 1234" 표시
  *    .sim-figs                                  폭이 바뀌면 다시 그림
  */
@@ -53,6 +56,9 @@
       tasksTitle: '이렇게 해 보세요',
       explainTitle: '설명 (눌러서 펼치기)',
       reroll: '🎲 다시 뽑기',
+      play: '▶ 재생',
+      pause: '⏸ 멈춤',
+      rewind: '⏮ 처음으로',
       seed: '시드',
       big: '가+',
       bigTitle: '글자 크게 보기 (프로젝터용)',
@@ -63,6 +69,9 @@
       tasksTitle: 'Try this',
       explainTitle: 'Explanation (click to expand)',
       reroll: '🎲 New draw',
+      play: '▶ Play',
+      pause: '⏸ Pause',
+      rewind: '⏮ Restart',
       seed: 'seed',
       big: 'A+',
       bigTitle: 'Larger text (for projectors)',
@@ -200,7 +209,7 @@
       return vars ? s.replace(/\{(\w+)\}/g, function (m, k) { return k in vars ? vars[k] : m; }) : s;
     }
 
-    var sim = { state: state, params: params, t: t, set: set, render: schedule };
+    var sim = { state: state, params: params, t: t, set: set, render: schedule, isPlaying: function () { return playing; } };
 
     /* 헤더·푸터 (embed 모드에선 아예 만들지 않음) */
     if (!EduSim.embed) {
@@ -236,6 +245,7 @@
       el.addEventListener('input', function () {
         var patch = {};
         patch[name] = def.values ? def.values[Number(el.value)] : parseParam(def, el.value, state);
+        if (play && name === play.param) setPlaying(false); // 재생 막대를 손으로 끌면 멈춤
         set(patch);
       });
     });
@@ -281,6 +291,10 @@
       if (!btn) return;
       if (btn.dataset.action === 'reroll' && useSeed) set({ seed: EduSim.newSeed(state.seed) });
       if (btn.dataset.action === 'big') toggleBig();
+      if (btn.dataset.action === 'play') setPlaying(!playing);
+      if (btn.dataset.action === 'rewind' && play) {
+        var p = {}; p[play.param] = bound(params[play.param].min, state); carry = 0; set(p);
+      }
     });
 
     function syncControls() {
@@ -307,6 +321,7 @@
       });
       document.querySelectorAll('[data-seed]').forEach(function (el) { el.textContent = t('seed') + ' ' + state.seed; });
       document.querySelectorAll('[data-action="big"]').forEach(function (el) { el.setAttribute('aria-pressed', String(EduSim.big)); });
+      document.querySelectorAll('[data-action="play"]').forEach(function (el) { el.textContent = t(playing ? 'pause' : 'play'); });
     }
 
     function applyText() {
@@ -355,6 +370,39 @@
       syncControls();
       writeURL();
       schedule();
+    }
+
+    /* 재생: play.param 값을 초당 speed만큼(step 단위로) 늘림. 끝에 닿으면 멈춤 */
+    var play = opts.play || null, playing = false, lastT = null, carry = 0;
+    function setPlaying(on) {
+      if (!play || on === playing) return;
+      playing = on;
+      if (on) {
+        var def = params[play.param];
+        if (state[play.param] >= bound(def.max, state)) { var p = {}; p[play.param] = bound(def.min, state); set(p); } // 끝에서 누르면 처음부터
+        lastT = null; carry = 0;
+        requestAnimationFrame(tick);
+      }
+      syncControls();
+      schedule(); // 멈춘 뒤 한 번 더 그림 (재생 중에만 줄여 그리던 것을 제대로)
+    }
+    function tick(now) {
+      if (!playing) return;
+      if (lastT !== null) {
+        var def = params[play.param];
+        var speed = typeof play.speed === 'string' ? state[play.speed] : play.speed;
+        carry += Math.min(0.1, (now - lastT) / 1000) * speed; // 탭이 가려졌다 돌아와도 한 번에 크게 건너뛰지 않게
+        var k = Math.floor(carry);
+        if (k > 0) {
+          carry -= k;
+          var max = bound(def.max, state), patch = {};
+          patch[play.param] = parseParam(def, Math.min(max, state[play.param] + k * def.step), state);
+          set(patch);
+          if (patch[play.param] >= max) { setPlaying(false); return; }
+        }
+      }
+      lastT = now;
+      requestAnimationFrame(tick);
     }
 
     function setLang(lang) {

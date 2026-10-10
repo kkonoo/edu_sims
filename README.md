@@ -14,6 +14,7 @@
 | Ridge와 Lasso: λ와 수축 | [`sims/ridge-lasso/`](https://kkonoo.github.io/edu_sims/sims/ridge-lasso/) | 회귀 5부, 베이즈 W8 |
 | 교란변수와 배치효과 | [`sims/confounding/`](https://kkonoo.github.io/edu_sims/sims/confounding/) | BI 입문(핵심 주제), 고급 BI(연구설계), 회귀 |
 | PCA·SVD: 저랭크 근사 | [`sims/pca-svd/`](https://kkonoo.github.io/edu_sims/sims/pca-svd/) | 선형대수 13·15장, BI 입문(scRNA), 고급 BI(single-cell) |
+| MCMC: 제안 폭과 체인의 움직임 | [`sims/mcmc/`](https://kkonoo.github.io/edu_sims/sims/mcmc/) | 베이즈 W5–6 |
 
 ---
 
@@ -165,6 +166,20 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 예: 관찰 과제 "중심화를 끄고 k = 1" → `?embed=1&data=cells&center=off&kc=1`
 
+**MCMC: 제안 폭과 체인의 움직임** (`sims/mcmc/`)
+
+| 파라미터 | 뜻 | 값 | 기본 |
+|---|---|---|---|
+| `target` | 목표분포 | `norm`(상관 정규), `bimodal`(두 봉우리) | `norm` |
+| `rho` | 상관 정규의 상관 ρ | 0–0.99 (0.01 단위) | 0.9 |
+| `tau` | 제안 표준편차 τ | 0.02, 0.03, 0.05, 0.07, 0.1, 0.15, 0.2, 0.3, 0.5, 0.7, 1, 1.5, 2, 3, 4, 5, 7, 10, 15, 20 | 1 |
+| `chains` | 체인 수 (4개면 네 모서리에서 출발하고 R̂를 계산) | `1`, `4` | `1` |
+| `n` | 보여 줄 걸음 수 (재생 막대) | 0–5000 | 500 |
+| `speed` | 재생 속도 (초당 걸음) | 5, 20, 100, 500, 2500 | 100 |
+| `seed` | 제안과 수용 판정에 쓰는 난수의 시드 (τ를 바꿔도 같은 난수) | 1–99999 | 1 |
+
+예: 관찰 과제 3 "두 봉우리, τ = 0.5, 체인 4개, 끝까지" → `?embed=1&target=bimodal&tau=0.5&chains=4&n=5000`
+
 범위를 벗어난 값은 가장 가까운 허용값(또는 기본값)으로 바뀝니다.
 
 ---
@@ -201,6 +216,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
    - 켜고 끄는 값: `{ options: ['on', 'off'] }` + `<input type="checkbox" data-param="이름">`.
    - 그림에서 점 끌기: `EduSim.drag(요소, { pick(x, y), move(대상, x, y), end() })`. 누르기만 하면 아무것도 움직이지 않고, 터치에서는 점을 잡은 손가락만 스크롤을 막습니다. Plot 그림 위에서도 동작합니다([`sims/matrix-2x2/main.js`](sims/matrix-2x2/main.js), [`sims/least-squares/main.js`](sims/least-squares/main.js) 참고).
    - URL에 문자열을 담으려면 `{ str: true, default: '' }` (예: 점 목록).
+   - 재생(애니메이션): `EduSim.create({ play: { param: 'n', speed: 'speed' } })`와 `<button data-action="play">`, `<button data-action="rewind">`. `n`이 초당 `speed`만큼 늘고, 끝에 닿거나 `n`의 슬라이더를 손으로 끌면 멈춥니다. 재생 중인지는 `sim.isPlaying()` ([`sims/mcmc/main.js`](sims/mcmc/main.js) 참고).
 
    - 난수는 `EduSim.rng(state.seed)`(`uniform()`, `normal()`)를 쓰면 다시 뽑기·시드 표시·URL이 자동으로 따라옵니다.
    - 그래프 색은 `EduSim.css('--c1')` ~ `--c4` (파랑·주황·청록·보라, 색각이상 검증 통과), 합친 값은 `--c-neutral`.
@@ -236,13 +252,14 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
   - `sims/confounding/test.html` (31개): R `lm(y ~ x)`·`lm(y ~ x + factor(batch))`의 계수·표준오차, `qt`, 누락변수 편향 공식과 신뢰구간 포함률(몬테카를로), 완전 교란 감지
   - `sims/ridge-lasso/test.html` (29개): Ridge 닫힌 해(R), Lasso의 KKT 조건·직교 설계의 정확한 해·λ 극한, 경로의 단조성, 기하 그림의 접점 (glmnet은 이 작업 환경에서 설치할 수 없어 비교하지 않음)
   - `sims/pca-svd/test.html` (43개): R `svd()`(작은 행렬 6개: 가로·세로로 긴 것, 랭크 부족, 중근, 힐베르트 / 시드 1 이미지의 특잇값 120개), R `prcomp()`의 sdev·loading·점수·누적 비율, 직교성·복원·에카르트–영(오차 공식과 "가장 가까움"), 모양별 랭크, 드문 유형 D가 PC3(중심화 안 하면 PC4)에 나오는지(시드 100개), 수렴 속도
+  - `sims/mcmc/test.html` (45개): 교재 W6의 R 함수 `ess_basic`·`split_rhat`·`var_plus_hat`(체인 6세트, ESS > 표본 수인 반상관 체인 포함)와 R `acf`, 수용률의 정확한 값(정규 목표의 닫힌 꼴, 두 봉우리는 독립표본으로), 정상분포 유지, Var(평균) ≈ 분산/ESS, 목표밀도의 정규화·주변분포, 수용·기각 규칙, 수업 의도(시드 30개: τ별 ESS 순서, 봉우리에 갇혀도 멀쩡해 보이는 체인, R̂)
 
 ## 구조
 
 ```
 index.html, gallery.js      갤러리와 등록부(교재 목록 포함)
 shared/style.css            공통 레이아웃·조작·색
-shared/sim.js               공통 모듈 EduSim: URL 상태, 언어, 난수, 시드, embed 높이 알림, 글자 크게
+shared/sim.js               공통 모듈 EduSim: URL 상태, 언어, 난수, 시드, 재생, embed 높이 알림, 글자 크게
 shared/test.js              브라우저 테스트 도우미
 sims/_template/             새 시뮬레이터용 틀
 sims/multiple-testing/      다중검정과 FDR (index.html, text.js, model.js, main.js, test.html)
@@ -252,6 +269,7 @@ sims/least-squares/         최소제곱: 잔차·이상치·leverage (같은 �
 sims/ridge-lasso/           Ridge와 Lasso: λ와 수축 (같은 구성)
 sims/confounding/           교란변수와 배치효과 (같은 구성)
 sims/pca-svd/               PCA·SVD: 저랭크 근사 (같은 구성, 행렬 그림은 캔버스)
+sims/mcmc/                  MCMC: 제안 폭과 체인의 움직임 (같은 구성, 재생 기능, 점·선은 캔버스)
 quarto/edu-sims-resize.html Quarto include용 높이 자동 조절 스크립트
 .nojekyll                   GitHub Pages가 _template 폴더도 그대로 서빙하도록
 ```

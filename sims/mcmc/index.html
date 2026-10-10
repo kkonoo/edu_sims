@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>edu_sims</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <!-- 차트: Observable Plot (d3가 먼저 있어야 함). 버전 고정 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/dist/plot.umd.min.js"></script>
+  <style>
+    .note { font-size: 0.8rem; color: var(--muted); margin: -0.3rem 0 0; }
+    .panel .seg label { flex: 1 1 auto; }
+    .panel .seg span { white-space: normal; line-height: 1.25; padding: 0.4rem 0.3rem; }
+    .presets { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .play-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .play-row .btn { flex: 1 1 auto; }
+
+    .stats-card .stats { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+    .stats-card .stat .v { font-size: 1.3rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .stats-card .stat .v small { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); }
+    .stats-card .stat .v small.sub { display: block; font-size: 0.75rem; line-height: 1.2; }
+    .stats-card .stat .v.warn { color: #b3261e; }
+
+    /* 그림: Plot이 그린 축·등고선 위에 캔버스를 겹쳐 점·선을 그림 (점이 수천 개라 SVG로는 재생이 느려짐) */
+    .plot-wrap { position: relative; margin: 0 auto; }
+    .plot-wrap canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
+
+    .mc-grid { display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr); grid-template-areas: "plane" "trace" "hist"; }
+    @media (min-width: 1040px) {
+      .mc-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-areas: "plane hist" "trace trace"; }
+    }
+    #fig-plane { grid-area: plane; }
+    #fig-trace { grid-area: trace; }
+    #fig-hist { grid-area: hist; }
+
+    .legend .mk { display: inline-block; width: 0.75rem; height: 0.75rem; }
+    .legend .mk.start { border: 2px solid var(--c1); transform: rotate(45deg) scale(0.8); }
+    .legend .mk.now { border-radius: 50%; background: var(--c1); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--c1); }
+    .legend .dot.blue { background: var(--c1); border-color: var(--c1); opacity: 0.5; }
+  </style>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question" data-t="question"></h1>
+
+    <div class="sim-layout">
+      <section class="card panel" aria-labelledby="panel-title">
+        <h2 class="card-title" id="panel-title" data-t="panel"></h2>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><span class="label" id="target-label" data-t="targetHead"></span></div>
+          <div class="seg" role="radiogroup" aria-labelledby="target-label">
+            <label><input type="radio" name="target" value="norm"><span data-t="targetNorm"></span></label>
+            <label><input type="radio" name="target" value="bimodal"><span data-t="targetBimodal"></span></label>
+          </div>
+        </div>
+        <p class="note" id="target-note"></p>
+
+        <div class="ctrl" id="ctrl-rho">
+          <div class="ctrl-head"><label for="rho" data-t="rho"></label><output for="rho" data-out="rho"></output></div>
+          <input type="range" id="rho" data-param="rho">
+        </div>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="tau" data-t="tau"></label><output for="tau" data-out="tau"></output></div>
+          <input type="range" id="tau" data-param="tau">
+          <div class="presets" id="presets-norm">
+            <button type="button" class="btn btn-sm" data-set='{"tau":0.05}' data-t="tauSmall"></button>
+            <button type="button" class="btn btn-sm" data-set='{"tau":1}' data-t="tauGood"></button>
+            <button type="button" class="btn btn-sm" data-set='{"tau":5}' data-t="tauBig"></button>
+          </div>
+          <div class="presets" id="presets-bimodal">
+            <button type="button" class="btn btn-sm" data-set='{"tau":0.5}' data-t="tauSmall"></button>
+            <button type="button" class="btn btn-sm" data-set='{"tau":4}' data-t="tauGood"></button>
+            <button type="button" class="btn btn-sm" data-set='{"tau":20}' data-t="tauBig"></button>
+          </div>
+        </div>
+
+        <div class="ctrl">
+          <div class="ctrl-head"><span class="label" id="chains-label" data-t="chainsHead"></span></div>
+          <div class="seg" role="radiogroup" aria-labelledby="chains-label">
+            <label><input type="radio" name="chains" value="1"><span data-t="chains1"></span></label>
+            <label><input type="radio" name="chains" value="4"><span data-t="chains4"></span></label>
+          </div>
+        </div>
+        <p class="note" data-t="chainsNote"></p>
+
+        <h3 class="panel-sub" data-t="playHead"></h3>
+        <div class="play-row">
+          <button type="button" class="btn" data-action="play"></button>
+          <button type="button" class="btn" data-action="rewind" data-t="rewind"></button>
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="n" data-t="n"></label><output for="n" data-out="n"></output></div>
+          <input type="range" id="n" data-param="n">
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-head"><label for="speed" data-t="speed"></label><output for="speed" data-out="speed"></output></div>
+          <input type="range" id="speed" data-param="speed">
+        </div>
+
+        <div class="seed-row">
+          <button type="button" class="btn" data-action="reroll" data-t="reroll"></button>
+          <span class="seed" data-seed></span>
+        </div>
+      </section>
+
+      <div class="sim-figs">
+        <section class="card stats-card" aria-live="polite">
+          <div class="stats">
+            <div class="stat"><div class="k" data-t="statN"></div><div class="v" id="stat-n"></div></div>
+            <div class="stat"><div class="k" data-t="statAcc"></div><div class="v" id="stat-acc"></div></div>
+            <div class="stat"><div class="k" data-t="statEss"></div><div class="v" id="stat-ess"></div></div>
+            <div class="stat" id="stat-rhat-box"><div class="k" data-t="statRhat"></div><div class="v" id="stat-rhat"></div></div>
+          </div>
+        </section>
+
+        <div class="mc-grid">
+          <figure class="card fig" id="fig-plane">
+            <figcaption class="card-title" data-t="planeTitle"></figcaption>
+            <div class="plot-wrap" id="plane"><div class="bg"></div><canvas role="img" data-t-aria="planeTitle"></canvas></div>
+            <div class="legend">
+              <span class="key"><span class="ln" style="border-color: var(--line-strong)"></span><span data-t="legendTarget"></span></span>
+              <span class="key"><span class="dot blue"></span><span data-t="legendVisited"></span></span>
+              <span class="key"><span class="mk start"></span><span data-t="legendStart"></span></span>
+              <span class="key"><span class="mk now"></span><span data-t="legendNow"></span></span>
+              <span class="key"><span class="ln" style="border-color: var(--ink)"></span><span data-t="legendAccept"></span>
+                <span class="ln dash" style="border-color: var(--ink-2)"></span><span data-t="legendReject"></span></span>
+            </div>
+          </figure>
+
+          <figure class="card fig" id="fig-trace">
+            <figcaption class="card-title" data-t="traceTitle"></figcaption>
+            <div class="plot-wrap" id="trace"><div class="bg"></div><canvas role="img" data-t-aria="traceTitle"></canvas></div>
+          </figure>
+
+          <figure class="card fig" id="fig-hist">
+            <figcaption class="card-title" data-t="histTitle"></figcaption>
+            <div id="hist"></div>
+            <div class="legend">
+              <span class="key"><span class="sw" id="hist-sw"></span><span data-t="legendHist"></span></span>
+              <span class="key"><span class="ln" style="border-color: var(--ink)"></span><span data-t="legendMarg"></span></span>
+            </div>
+          </figure>
+        </div>
+      </div>
+    </div>
+
+    <section class="card tasks">
+      <h2 data-t="tasksTitle"></h2>
+      <ol>
+        <li data-t-html="task1"></li>
+        <li data-t-html="task2"></li>
+        <li data-t-html="task3"></li>
+      </ol>
+    </section>
+
+    <details class="card explain">
+      <summary data-t="explainTitle"></summary>
+      <div data-t-html="explain"></div>
+    </details>
+  </main>
+
+  <script src="text.js"></script>
+  <script src="model.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
