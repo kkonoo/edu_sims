@@ -12,6 +12,7 @@
 | 2×2 행렬과 고유벡터 | [`sims/matrix-2x2/`](https://kkonoo.github.io/edu_sims/sims/matrix-2x2/) | 선형대수 2·11·12장 |
 | 최소제곱: 잔차·이상치·leverage | [`sims/least-squares/`](https://kkonoo.github.io/edu_sims/sims/least-squares/) | 회귀 1·3부, 선형대수 9장 |
 | Ridge와 Lasso: λ와 수축 | [`sims/ridge-lasso/`](https://kkonoo.github.io/edu_sims/sims/ridge-lasso/) | 회귀 5부, 베이즈 W8 |
+| 교란변수와 배치효과 | [`sims/confounding/`](https://kkonoo.github.io/edu_sims/sims/confounding/) | BI 입문(핵심 주제), 고급 BI(연구설계), 회귀 |
 
 ---
 
@@ -139,6 +140,18 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 예: 관찰 과제 2 "Ridge, 큰 λ" → `?embed=1&method=ridge&loglam=1`
 
+**교란변수와 배치효과** (`sims/confounding/`)
+
+| 파라미터 | 뜻 | 값 | 기본 |
+|---|---|---|---|
+| `mode` | 상황 | `cont`(연속 x, Simpson), `treat`(처리 vs 대조) | `cont` |
+| `bc`, `gc`, `shift` | 연속 모드: 진짜 기울기 β, 배치 효과 γ, 교란 강도 | −1.5–1.5, −4–4, 0–3 | 0.8, −3, 2 |
+| `bt`, `gt`, `frac` | 처리 모드: 진짜 처리 효과 β, 배치 효과 γ, 배치 1의 처리군 비율 | −2–2, −3–3, 0.5–1 | 0, 2, 0.8 |
+| `batch` | 배치 정보 보기 | `on`, `off` | `on` |
+| `seed` | 데이터 시드 | 1–99999 | 1 |
+
+예: 수업에서 "배치를 모를 때" 그림부터 보여 주고 나중에 켜기 → `?embed=1&batch=off`
+
 범위를 벗어난 값은 가장 가까운 허용값(또는 기본값)으로 바뀝니다.
 
 ---
@@ -207,6 +220,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
   - `sims/prior-posterior/test.html` (41개): `lgamma`·`dbeta`·`pbeta`·`qbeta`, 켤레 공식, 신용구간 포함률
   - `sims/matrix-2x2/test.html` (32개): 고유값·고유벡터(R `eigen`), 복소·중근·전단·cI 구분, tr·det 관계, 무작위 행렬 3,000개
   - `sims/least-squares/test.html` (25개): R `lm`의 계수·R²·σ̂·`hatvalues`·`rstandard`·`cooks.distance`, 잔차의 직교성, Cook 거리 정의
+  - `sims/confounding/test.html` (31개): R `lm(y ~ x)`·`lm(y ~ x + factor(batch))`의 계수·표준오차, `qt`, 누락변수 편향 공식과 신뢰구간 포함률(몬테카를로), 완전 교란 감지
   - `sims/ridge-lasso/test.html` (29개): Ridge 닫힌 해(R), Lasso의 KKT 조건·직교 설계의 정확한 해·λ 극한, 경로의 단조성, 기하 그림의 접점 (glmnet은 이 작업 환경에서 설치할 수 없어 비교하지 않음)
 
 ## 구조
@@ -222,6 +236,7 @@ sims/prior-posterior/       사전분포 × 가능도 → 사후분포 (같은 �
 sims/matrix-2x2/            2×2 행렬과 고유벡터 (같은 구성, 차트 라이브러리 없이 SVG)
 sims/least-squares/         최소제곱: 잔차·이상치·leverage (같은 구성)
 sims/ridge-lasso/           Ridge와 Lasso: λ와 수축 (같은 구성)
+sims/confounding/           교란변수와 배치효과 (같은 구성)
 quarto/edu-sims-resize.html Quarto include용 높이 자동 조절 스크립트
 .nojekyll                   GitHub Pages가 _template 폴더도 그대로 서빙하도록
 ```

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>테스트 · 교란변수와 배치효과</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <script src="../../shared/test.js"></script>
+  <script src="model.js"></script>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question">테스트: 교란변수와 배치효과</h1>
+    <p>계산 부분(<code>model.js</code>)만 검사합니다. 파일을 더블클릭해 열어도 됩니다.
+      <a href="./">시뮬레이터로 돌아가기</a></p>
+    <div id="test-results"></div>
+  </main>
+
+  <script>
+    EduTest.run(function (T) {
+      const maxRel = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i]) / Math.max(Math.abs(b[i]), 1e-300)));
+      const dummies = (batch, K) => batch.map((g) => Array.from({ length: K - 1 }, (_, k) => (g === k + 1 ? 1 : 0)));
+
+      /* ---------------------------------------------------------------
+       * 1. R과 비교 — 기댓값: R 4.5.1 (webR)에서 summary(lm(…))의 계수·표준오차, qt(0.975, df)
+       * --------------------------------------------------------------- */
+      T.section('t 분포 97.5% 분위수: R qt(0.975, df)와 비교 (자유도 30 이상)');
+      [[30, 2.0422724563012378], [36, 2.0280940009804507], [37, 2.0261924630291088], [38, 2.0243941639119694], [56, 2.0032407188478722],
+        [57, 2.0024654592910069], [58, 2.0017174841452356], [100, 1.9839715185235516], [1000, 1.9623390808264076]]
+        .forEach(([df, r]) => T.near('df = ' + df + (df === 56 ? ' (연속 모드)' : df === 37 ? ' (처리 모드)' : ''), CF.qt975(df), r, 1e-7));
+
+      T.section('회귀: R lm과 비교 (작은 고정 데이터)');
+      {
+        // 연속: 배치 3개 × 3
+        const x = [-2.1, -1.4, -2.8, 0.3, -0.5, 0.9, 2.2, 1.6, 2.9], g = [0, 0, 0, 1, 1, 1, 2, 2, 2];
+        const y = [3.9, 4.6, 2.8, 0.7, -0.4, 1.1, -2.0, -2.9, -1.3];
+        const a = CF.ols(x.map((v) => [1, v]), y);
+        const b = CF.ols(x.map((v, i) => [1, v, ...dummies(g, 3)[i]]), y);
+        const e1 = Math.max(maxRel(a.coef, [0.85877488185593531, -1.1172490333667477]), maxRel(a.se, [0.51652169450379559, 0.27755012079850788]));
+        const e2 = Math.max(maxRel(b.coef, [6.2821879936808855, 1.1978672985781993, -6.0950236966824667, -11.024091627172197]),
+          maxRel(b.se, [0.19806329510128287, 0.085648019287805979, 0.23172498588198581, 0.38923546239733214]));
+        T.check('연속: lm(y ~ x) 계수·표준오차 (기울기 −1.12: 전체로는 음수)', e1 < 1e-12, '가장 큰 상대오차 ' + e1.toExponential(1));
+        T.check('연속: lm(y ~ x + factor(batch)) 계수·표준오차 (기울기 +1.20: 배치 안에서는 양수)', e2 < 1e-12, '가장 큰 상대오차 ' + e2.toExponential(1));
+        // 처리: 배치 2개 × 4
+        const t = [1, 1, 1, 0, 1, 0, 0, 0], h = [0, 0, 0, 0, 1, 1, 1, 1], y2 = [0.4, -0.3, 0.9, 0.2, 2.3, 1.8, 2.6, 1.5];
+        const c = CF.ols(t.map((v) => [1, v]), y2), d = CF.ols(t.map((v, i) => [1, v, h[i]]), y2);
+        const e3 = Math.max(maxRel(c.coef, [1.5249999999999997, -0.69999999999999996]), maxRel(c.se, [0.5249999999999998, 0.74246212024587477]));
+        const e4 = Math.max(maxRel(d.coef, [0.12499999999999953, 0.23333333333333375, 1.8666666666666671]), maxRel(d.se, [0.41658332499833267, 0.43024540800700123, 0.43024540800700123]));
+        T.check('처리: lm(y ~ t) 계수·표준오차', e3 < 1e-12, '가장 큰 상대오차 ' + e3.toExponential(1));
+        T.check('처리: lm(y ~ t + factor(batch)) 계수·표준오차', e4 < 1e-12, '가장 큰 상대오차 ' + e4.toExponential(1));
+        // 완전 교란: R은 배치 열을 NA로 버리지만, 여기서는 "구분할 수 없음"으로 알려야 함
+        const full = CF.analyze({ K: 2, x: [1, 1, 1, 1, 0, 0, 0, 0], batch: h, y: y2 });
+        T.check('처리와 배치가 완전히 겹치면 보정 추정은 구할 수 없음 (R: NA)', full.adj.ok === false && full.naive.ok === true);
+      }
+
+      /* ---------------------------------------------------------------
+       * 2. 몬테카를로 — 시드 1–1000 (고정) · 허용 범위는 3 SE
+       * --------------------------------------------------------------- */
+      const REPS = 1000;
+      function mc(make, beta, gamma) {
+        const adj = [], naiveErr = [], cover = [], naiveCover = [];
+        for (let seed = 1; seed <= REPS; seed++) {
+          const d = make(seed), a = CF.analyze(d);
+          adj.push(a.adj.est);
+          naiveErr.push(a.naive.est - (beta + CF.omittedBias(d, gamma))); // 누락변수 편향 공식으로 설명되지 않는 부분
+          cover.push(a.adj.lo <= beta && beta <= a.adj.hi ? 1 : 0);
+          naiveCover.push(a.naive.lo <= beta && beta <= a.naive.hi ? 1 : 0);
+        }
+        return { adj, naiveErr, cover, naiveCover };
+      }
+      const mean = (v) => v.reduce((s, x) => s + x, 0) / v.length;
+      const se = (v) => { const m = mean(v); return Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / (v.length - 1) / v.length); };
+      const seP = (p) => Math.sqrt((p * (1 - p)) / REPS);
+
+      T.section('몬테카를로: 연속 모드 (β = 0.8, γ = −3, 교란 강도 2, ' + REPS + '회)');
+      {
+        const r = mc((s) => CF.makeCont(s, 0.8, -3, 2), 0.8, -3);
+        T.check('배치 보정 추정의 평균 ≈ β (불편)', Math.abs(mean(r.adj) - 0.8) <= 3 * se(r.adj), '평균 ' + mean(r.adj).toFixed(4) + ' · 허용 ±' + (3 * se(r.adj)).toFixed(4));
+        T.check('배치 무시 추정 = β + 누락변수 편향 (공식과의 차이의 평균 ≈ 0)', Math.abs(mean(r.naiveErr)) <= 3 * se(r.naiveErr), '평균 차이 ' + mean(r.naiveErr).toFixed(4) + ' · 허용 ±' + (3 * se(r.naiveErr)).toFixed(4));
+        const cv = mean(r.cover);
+        T.check('배치 보정의 95% 신뢰구간이 β를 포함하는 비율 ≈ 0.95', Math.abs(cv - 0.95) <= 3 * seP(0.95), '비율 ' + cv.toFixed(3));
+        T.check('배치 무시의 신뢰구간은 β를 거의 포함하지 못함 (편향 때문)', mean(r.naiveCover) < 0.05, '비율 ' + mean(r.naiveCover).toFixed(3));
+      }
+      T.section('몬테카를로: 처리 모드 (β = 0, γ = 2, 배치 1 처리군 80%, ' + REPS + '회)');
+      {
+        const r = mc((s) => CF.makeTreat(s, 0, 2, 0.8), 0, 2);
+        T.check('배치 보정 추정의 평균 ≈ 0', Math.abs(mean(r.adj)) <= 3 * se(r.adj), '평균 ' + mean(r.adj).toFixed(4) + ' · 허용 ±' + (3 * se(r.adj)).toFixed(4));
+        T.check('배치 무시 추정 = 0 + 누락변수 편향', Math.abs(mean(r.naiveErr)) <= 3 * se(r.naiveErr), '평균 차이 ' + mean(r.naiveErr).toFixed(4));
+        const bias = CF.omittedBias(CF.makeTreat(1, 0, 2, 0.8), 2);
+        T.check('이 설계의 편향은 −γ × 0.6 = −1.2 (배치 2에 대조군이 몰림)', Math.abs(bias + 1.2) < 1e-12, '편향 ' + bias);
+        const cv = mean(r.cover);
+        T.check('배치 보정의 95% 신뢰구간 포함률 ≈ 0.95', Math.abs(cv - 0.95) <= 3 * seP(0.95), '비율 ' + cv.toFixed(3));
+        T.check('배치를 무시하면 효과가 없는데도 대부분 "유의" (구간이 0을 포함하지 않음)', mean(r.naiveCover) < 0.2, '0을 포함하는 비율 ' + mean(r.naiveCover).toFixed(3));
+      }
+      T.section('균형 설계와 교란이 없을 때');
+      {
+        const d = CF.makeTreat(3, 0.5, 2, 0.5);
+        T.check('처리군이 배치마다 반반이면(50%) 누락변수 편향은 정확히 0', Math.abs(CF.omittedBias(d, 2)) < 1e-15);
+        const ests = Array.from({ length: REPS }, (_, s) => CF.analyze(CF.makeCont(s + 1, 0.8, -3, 0)).naive.est);
+        T.check('교란 강도 0이면 배치를 무시해도 평균 ≈ β', Math.abs(mean(ests) - 0.8) <= 3 * se(ests),
+          '평균 ' + mean(ests).toFixed(4) + ' · 허용 ±' + (3 * se(ests)).toFixed(4));
+        const wN = mean(Array.from({ length: 200 }, (_, s) => { const a = CF.analyze(CF.makeCont(s + 1, 0.8, -3, 0)); return a.naive.hi - a.naive.lo; }));
+        const wA = mean(Array.from({ length: 200 }, (_, s) => { const a = CF.analyze(CF.makeCont(s + 1, 0.8, -3, 0)); return a.adj.hi - a.adj.lo; }));
+        T.check('그래도 보정하면 배치 차이만큼의 잡음이 빠져 신뢰구간이 좁아짐', wA < wN, '평균 폭: 무시 ' + wN.toFixed(3) + ', 보정 ' + wA.toFixed(3));
+      }
+
+      /* ---------------------------------------------------------------
+       * 3. 데이터와 시드
+       * --------------------------------------------------------------- */
+      T.section('데이터와 시드');
+      {
+        const tabs = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1].map((f) => CF.designTable(CF.makeTreat(1, 0, 2, f)));
+        T.check('처리 모드: 비율이 몇이든 배치마다 20개, 전체 처리군 20개',
+          tabs.every((t) => t[0][0] + t[0][1] === 20 && t[1][0] + t[1][1] === 20 && t[0][1] + t[1][1] === 20));
+        T.check('80%이면 설계표가 [4, 16; 16, 4]', JSON.stringify(CF.designTable(CF.makeTreat(1, 0, 2, 0.8))) === '[[4,16],[16,4]]');
+        T.check('같은 시드면 같은 데이터', JSON.stringify(CF.makeCont(5, 0.8, -3, 2)) === JSON.stringify(CF.makeCont(5, 0.8, -3, 2)));
+        T.check('시드가 다르면 다른 데이터', JSON.stringify(CF.makeCont(5, 0.8, -3, 2).y) !== JSON.stringify(CF.makeCont(6, 0.8, -3, 2).y));
+        const a = CF.makeCont(5, 0.8, -3, 2), b = CF.makeCont(5, -0.5, 1, 2);
+        T.check('β·γ를 바꿔도 x는 그대로 (같은 난수를 다시 씀 → 슬라이더를 움직이면 점이 위아래로만 움직임)', JSON.stringify(a.x) === JSON.stringify(b.x));
+      }
+    });
+  </script>
+</body>
+</html>

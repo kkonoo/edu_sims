@@ -70,4 +70,17 @@ const SIMS = [
       ['4_Bayes', { ko: 'W8 (수축)', en: 'W8 (shrinkage)' }],
     ],
   },
+  {
+    id: 'confounding',
+    title: { ko: '교란변수와 배치효과', en: 'Confounding and batch effects' },
+    question: {
+      ko: '전체로 보면 반대인데, 나눠 보면? 배치가 결론을 뒤집을 수 있을까?',
+      en: 'The overall trend points one way, but within groups? Can batches flip the conclusion?',
+    },
+    books: [
+      ['BI_for_Biomed_KNUmed', { ko: '핵심 주제', en: 'core topic' }],
+      ['advanced_BI_for_MD_PhD_KNUmed', { ko: '연구설계', en: 'study design' }],
+      ['3_linear_regression', ''],
+    ],
+  },
 ];
