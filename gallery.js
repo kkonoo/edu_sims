@@ -37,4 +37,13 @@ const SIMS = [
     },
     books: [['4_Bayes', 'W1–3']],
   },
+  {
+    id: 'matrix-2x2',
+    title: { ko: '2×2 행렬과 고유벡터', en: '2×2 matrices and eigenvectors' },
+    question: {
+      ko: '행렬을 곱하면 평면은 어떻게 바뀔까? 방향이 그대로인 벡터는?',
+      en: 'How does multiplying by a matrix reshape the plane? Which vectors keep their direction?',
+    },
+    books: [['2_linear_algebra', { ko: '2·11·12장', en: 'ch. 2, 11, 12' }]],
+  },
 ];

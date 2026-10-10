@@ -20,6 +20,7 @@
  *    <input type="number" data-param="n">       숫자 직접 입력 (Enter나 칸을 벗어날 때 반영)
  *    <button data-set='{"p":0.5,"n":20}'>       여러 값을 한 번에 (지금 값과 같으면 aria-pressed="true")
  *    <input type="radio" name="method" value="a">
+ *    <input type="checkbox" data-param="show">  켜짐 = options[0], 꺼짐 = options[1]  (예: { options: ['on', 'off'] })
  *    <output data-out="n">                      현재 값 표시 (params[n].format 이 있으면 사용)
  *    <span data-t="key">                        문구 교체 (자식 요소가 없는 요소에만)
  *    <p data-t-html="key">                      HTML 문구 교체 (설명처럼 <b> 등이 필요할 때)
@@ -92,6 +93,39 @@
     var s;
     do { s = 1 + Math.floor(Math.random() * EduSim.SEED_MAX); } while (s === old);
     return s;
+  };
+
+  /* ---------- 드래그 ----------
+   * el(다시 그려도 그대로 남는 요소) 안에서 누르면 pick(x, y)가 잡을 대상을 고르고(없으면 null),
+   * 끄는 동안 move(대상, x, y), 놓으면 end()(있으면)를 부름. x, y는 el 왼쪽 위 기준 px.
+   * 터치: 잡는 점에서 시작한 터치만 스크롤을 막고, 그 밖을 쓸 때는 페이지가 그대로 스크롤됨 */
+  EduSim.drag = function (el, opts) {
+    var target = null;
+    function pos(e) { var r = el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+    el.addEventListener('pointerdown', function (e) {
+      var p = pos(e);
+      target = opts.pick(p[0], p[1]);
+      if (target == null) return;
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      opts.move(target, p[0], p[1]);
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (target == null) return;
+      var p = pos(e);
+      opts.move(target, p[0], p[1]);
+    });
+    function end() {
+      if (target != null && opts.end) opts.end();
+      target = null;
+    }
+    // pointerdown이 touchstart보다 먼저 오므로, 점을 잡은 터치면 여기서 스크롤을 막음
+    // (그림을 매번 다시 그려서 SVG 요소의 touch-action만으로는 브라우저가 중간에 스크롤을 시작함)
+    function block(e) { if (target != null) e.preventDefault(); }
+    el.addEventListener('touchstart', block, { passive: false });
+    el.addEventListener('touchmove', block, { passive: false });
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
   };
 
   /* ---------- 숫자 표시 ---------- */
@@ -207,6 +241,13 @@
         set(patch);
       });
     });
+    var checks = document.querySelectorAll('input[type="checkbox"][data-param]');
+    checks.forEach(function (el) {
+      var name = el.dataset.param, def = params[name];
+      el.addEventListener('change', function () {
+        var patch = {}; patch[name] = def.options[el.checked ? 0 : 1]; set(patch);
+      });
+    });
     var radios = Array.prototype.filter.call(document.querySelectorAll('input[type="radio"]'),
       function (el) { return params[el.name] && params[el.name].options; });
     radios.forEach(function (el) {
@@ -250,6 +291,7 @@
         el.setAttribute('aria-pressed', String(Object.keys(raw).every(function (k) { return state[k] === raw[k]; })));
       });
       radios.forEach(function (el) { el.checked = state[el.name] === el.value; });
+      checks.forEach(function (el) { el.checked = state[el.dataset.param] === params[el.dataset.param].options[0]; });
       document.querySelectorAll('[data-out]').forEach(function (el) {
         var def = params[el.dataset.out], v = state[el.dataset.out];
         el.textContent = def && def.format ? def.format(v, sim) : EduSim.fmt(v, def && def.step ? decimals(def.step) : 0);

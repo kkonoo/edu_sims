@@ -171,6 +171,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba
 .seg input:focus-visible + span { outline: 2px solid var(--c1); outline-offset: 1px; }
 fieldset.seg { border: 1px solid var(--line); }
 
+/* 체크박스 */
+.check { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.95rem; cursor: pointer; min-height: 2.25rem; }
+.check input { width: 1.15rem; height: 1.15rem; margin: 0; accent-color: var(--ink); }
+
 /* 버튼 */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>테스트 · 2×2 행렬과 고유벡터</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <script src="../../shared/sim.js"></script>
+  <script src="../../shared/test.js"></script>
+  <script src="model.js"></script>
+</head>
+<body>
+  <main class="sim">
+    <h1 class="sim-question">테스트: 2×2 행렬과 고유벡터</h1>
+    <p>계산 부분(<code>model.js</code>)만 검사합니다. 파일을 더블클릭해 열어도 됩니다.
+      <a href="./">시뮬레이터로 돌아가기</a></p>
+    <div id="test-results"></div>
+  </main>
+
+  <script>
+    EduTest.run(function (T) {
+      const fmt = EduTest.fmt;
+      const mat = (m) => [[m[0], m[1]], [m[2], m[3]]];
+      const name = (m) => '[' + m[0] + ', ' + m[1] + '; ' + m[2] + ', ' + m[3] + ']';
+      const resid = (A, lam, v) => { const w = M2.apply(A, v); return Math.hypot(w[0] - lam * v[0], w[1] - lam * v[1]); };
+
+      /* ---------------------------------------------------------------
+       * 1. R eigen()과 비교 — 기댓값: R 4.5.1 (webR)에서
+       *    e <- eigen(matrix(c(a, b, c, d), 2, 2, byrow = TRUE)); sprintf("%.17g", e$values); e$vectors
+       *    R은 고유벡터의 부호와 순서를 마음대로 정하므로, 값으로 짝을 맞추고 방향(±)만 비교
+       * --------------------------------------------------------------- */
+      T.section('실수 고유값·고유벡터: R eigen()과 비교');
+      const R_REAL = [
+        [[1, 1, 0, 2], [2, 1], [[0.70710678118654746, 0.70710678118654746], [1, 0]]],
+        [[2, 1, 1, 2], [3, 1], [[0.70710678118654746, 0.70710678118654746], [-0.70710678118654746, 0.70710678118654746]]],
+        [[0.5, 0.5, 0.5, 0.5], [1, 0], [[0.70710678118654746, 0.70710678118654746], [-0.70710678118654746, 0.70710678118654746]]],
+        [[1, 0, 0, -1], [1, -1], [[-1, 0], [0, -1]]],
+        [[-1.5, 2, 0.5, -2], [-2.7807764064044154, -0.71922359359558485],
+          [[-0.84212293975475971, 0.53928559626491146], [0.931532088154712, 0.36365913811991846]]],
+        [[3, -2, 2.5, -3], [2, -2], [[0.89442719099991586, 0.44721359549995793], [0.37139067635410372, 0.92847669088525919]]],
+        [[1, 2, 0.5, 1.01], [2.0050124999218757, 0.0049875000781238743], // 거의 특이행렬: 작은 고유값도 정확해야 함
+          [[-0.89352963335125846, -0.44900422528431261], [-0.89531848773314371, 0.44542654335281434]]],
+      ];
+      for (const [m, rv, rvec] of R_REAL) {
+        const e = M2.eigen(mat(m));
+        if (e.type !== 'distinct') { T.check(name(m) + ': 서로 다른 실수 고유값 둘', false, '실제 ' + e.type); continue; }
+        let worstVal = 0, worstDir = 0;
+        rv.forEach((r, i) => {
+          const j = Math.abs(e.values[0] - r) <= Math.abs(e.values[1] - r) ? 0 : 1; // 값으로 짝 맞추기
+          worstVal = Math.max(worstVal, Math.abs(e.values[j] - r) / Math.max(1e-300, Math.abs(r)) || 0);
+          const v = e.vectors[j], u = rvec[i];
+          worstDir = Math.max(worstDir, 1 - Math.abs(v[0] * u[0] + v[1] * u[1]));
+        });
+        T.check(name(m) + ': λ = ' + rv.map(fmt).join(', '), worstVal <= 1e-12 && worstDir <= 1e-12,
+          '고유값 상대오차 ' + worstVal.toExponential(1) + ' · 방향 차이 1 − |cos| = ' + worstDir.toExponential(1));
+      }
+
+      {
+        // 화면 범위 밖의 극단적인 거의-특이행렬: 작은 고유값을 tr/2 − √판별식 으로 그대로 빼면 자릿수를 잃음(상대오차 2×10⁻¹⁰).
+        // 기댓값은 R이 아니라 입력 double 값을 그대로 60자리 십진 연산(Python decimal)으로 푼 값:
+        // 이 경우 R eigen()(LAPACK)도 행렬 크기 기준 오차라 작은 고유값의 상대오차가 9×10⁻¹¹이나 됨
+        const exact = 4.999998749588667e-07;
+        const e = M2.eigen(mat([1, 1, 1, 1.000001]));
+        const err = Math.abs(e.values[1] - exact) / exact;
+        T.check('[1, 1; 1, 1.000001]: 아주 작은 고유값 5×10⁻⁷도 정확 (상쇄 오차 없음)', err <= 1e-14,
+          '상대오차 ' + err.toExponential(1) + ' · 실제 ' + e.values[1]);
+      }
+
+      T.section('특수한 경우의 구분');
+      const C1 = M2.eigen(mat([0.87, -0.5, 0.5, 0.87]));
+      T.check('회전 [0.87, −0.5; 0.5, 0.87]: 복소 고유값 0.87 ± 0.5i (R과 같음)',
+        C1.type === 'complex' && Math.abs(C1.re - 0.87) < 1e-12 && Math.abs(C1.im - 0.5) < 1e-12, '실제 ' + C1.type + ' ' + C1.re + ' ± ' + C1.im);
+      const C2 = M2.eigen(mat([0, -1, 1, 0]));
+      T.check('90° 회전: 고유값 ± i', C2.type === 'complex' && C2.re === 0 && Math.abs(C2.im - 1) < 1e-15);
+      const D1 = M2.eigen(mat([1, 1, 0, 1]));
+      T.check('전단 [1, 1; 0, 1]: 중근 λ = 1, 고유벡터 방향은 (1, 0) 하나뿐',
+        D1.type === 'defective' && D1.values[0] === 1 && D1.vectors.length === 1 && Math.abs(D1.vectors[0][1]) < 1e-15);
+      const S1 = M2.eigen(mat([2, 0, 0, 2]));
+      T.check('2I: 모든 방향이 고유벡터 (λ = 2)', S1.type === 'scalar' && S1.values[0] === 2);
+      const Z = M2.eigen(mat([0, 0, 0, 0]));
+      T.check('영행렬: 모든 방향이 고유벡터 (λ = 0)', Z.type === 'scalar' && Z.values[0] === 0);
+      const P = M2.eigen(mat([0.5, 0.5, 0.5, 0.5]));
+      T.check('투영 [0.5, 0.5; 0.5, 0.5]: 고유값 1과 0', P.type === 'distinct' && P.values[0] === 1 && Math.abs(P.values[1]) < 1e-15);
+
+      /* ---------------------------------------------------------------
+       * 2. 성질 — 무작위 행렬 수천 개
+       * --------------------------------------------------------------- */
+      T.section('성질: Av = λv, λ₁ + λ₂ = tr A, λ₁λ₂ = det A');
+      {
+        const rng = EduSim.rng(314);
+        const N = 3000;
+        let worstRes = 0, worstTr = 0, worstDet = 0, nReal = 0, nComplex = 0;
+        for (let i = 0; i < N; i++) {
+          // 화면과 같은 범위(−3 ~ 3, 0.01 단위)에서
+          const A = mat(Array.from({ length: 4 }, () => Math.round((rng.uniform() * 6 - 3) * 100) / 100));
+          const e = M2.eigen(A), tr = M2.trace(A), dt = M2.det(A);
+          const scale = Math.max(1, Math.abs(tr), Math.abs(dt));
+          let sum, prod;
+          if (e.type === 'complex') { nComplex++; sum = 2 * e.re; prod = e.re * e.re + e.im * e.im; }
+          else {
+            nReal++;
+            const vals = e.type === 'distinct' ? e.values : [e.values[0], e.values[0]];
+            sum = vals[0] + vals[1]; prod = vals[0] * vals[1];
+            (e.vectors || []).forEach((v, j) => { worstRes = Math.max(worstRes, resid(A, e.values[j], v)); });
+          }
+          worstTr = Math.max(worstTr, Math.abs(sum - tr) / scale);
+          worstDet = Math.max(worstDet, Math.abs(prod - dt) / scale);
+        }
+        T.check('무작위 ' + N + '개 (실수 ' + nReal + ', 복소 ' + nComplex + '): |Av − λv|가 모두 작음', worstRes < 1e-12, '가장 큰 값 ' + worstRes.toExponential(1));
+        T.check('λ₁ + λ₂ = tr A', worstTr < 1e-12, '가장 큰 차이 ' + worstTr.toExponential(1));
+        T.check('λ₁ · λ₂ = det A', worstDet < 1e-12, '가장 큰 차이 ' + worstDet.toExponential(1));
+      }
+      {
+        const rng = EduSim.rng(271);
+        let worstDot = 0;
+        for (let i = 0; i < 1000; i++) {
+          const a = rng.uniform() * 6 - 3, b = rng.uniform() * 6 - 3, d = rng.uniform() * 6 - 3;
+          const e = M2.eigen([[a, b], [b, d]]);
+          if (e.type === 'distinct') worstDot = Math.max(worstDot, Math.abs(e.vectors[0][0] * e.vectors[1][0] + e.vectors[0][1] * e.vectors[1][1]));
+        }
+        T.check('대칭행렬 1,000개: 두 고유벡터가 서로 수직', worstDot < 1e-12, '가장 큰 |v₁·v₂| ' + worstDot.toExponential(1));
+      }
+      {
+        const rng = EduSim.rng(161);
+        let worst = 0;
+        for (let i = 0; i < 1000; i++) {
+          const A = mat(Array.from({ length: 4 }, () => rng.uniform() * 6 - 3));
+          const e1 = M2.apply(A, [1, 0]), e2 = M2.apply(A, [0, 1]);
+          const area = M2.polygonArea([[0, 0], e1, [e1[0] + e2[0], e1[1] + e2[1]], e2]);
+          worst = Math.max(worst, Math.abs(area - M2.det(A)));
+        }
+        T.check('단위정사각형의 상의 (부호 있는) 넓이 = det A', worst < 1e-12, '가장 큰 차이 ' + worst.toExponential(1));
+      }
+
+      T.section('변형 정도 t: (1 − t)I + tA');
+      {
+        const A = mat([1, 1, 0, 2]);
+        const M0 = M2.lerpI(A, 0), M1 = M2.lerpI(A, 1);
+        T.check('t = 0이면 단위행렬, t = 1이면 A', JSON.stringify(M0) === '[[1,0],[0,1]]' && JSON.stringify(M1) === JSON.stringify(A));
+        const eA = M2.eigen(A);
+        let worst = 0;
+        for (const t of [0.1, 0.25, 0.5, 0.9]) {
+          const M = M2.lerpI(A, t);
+          eA.vectors.forEach((v, j) => { worst = Math.max(worst, resid(M, 1 - t + t * eA.values[j], v)); });
+        }
+        T.check('중간 행렬도 A의 고유벡터를 그대로 갖고, 고유값은 (1 − t) + tλ', worst < 1e-12, '가장 큰 |Mv − λv| ' + worst.toExponential(1));
+      }
+
+      T.section('Av = λv 표시 (시험 벡터)');
+      {
+        const A = mat([2, 1, 1, 2]);
+        T.check('고유벡터 방향 v = (2, 2) → λ = 3', M2.eigenRatio(A, [2, 2]) === 3);
+        T.check('반대 방향 v = (−1, 1) → λ = 1', M2.eigenRatio(A, [-1, 1]) === 1);
+        T.check('고유벡터가 아닌 v = (1.5, 1) → 표시 없음', M2.eigenRatio(A, [1.5, 1]) === null);
+        T.check('v = 0 → 표시 없음', M2.eigenRatio(A, [0, 0]) === null);
+        T.check('투영에서 v가 영공간 (1, −1) → λ = 0', M2.eigenRatio(mat([0.5, 0.5, 0.5, 0.5]), [1, -1]) === 0);
+        const ang = (deg) => [Math.cos(Math.PI / 4 + (deg * Math.PI) / 180), Math.sin(Math.PI / 4 + (deg * Math.PI) / 180)];
+        T.check('고유벡터에서 0.5° 벗어나면 표시 (손으로 끌 때 허용)', M2.eigenRatio(A, ang(0.5)) !== null);
+        T.check('고유벡터에서 5° 벗어나면 표시 없음', M2.eigenRatio(A, ang(5)) === null);
+      }
+
+      /* ---------------------------------------------------------------
+       * 3. 무작위 행렬 버튼
+       * --------------------------------------------------------------- */
+      T.section('무작위 행렬: 시드');
+      {
+        T.check('같은 시드면 같은 행렬', JSON.stringify(M2.randomMatrix(17)) === JSON.stringify(M2.randomMatrix(17)));
+        let allowed = true, zero = false, distinct = new Set();
+        for (let s = 1; s <= 2000; s++) {
+          const A = M2.randomMatrix(s);
+          const xs = [A[0][0], A[0][1], A[1][0], A[1][1]];
+          if (!xs.every((x) => x >= -2 && x <= 2 && Number.isInteger(x * 2))) allowed = false;
+          if (xs.every((x) => x === 0)) zero = true;
+          distinct.add(xs.join());
+        }
+        T.check('시드 2,000개: 성분은 모두 −2, −1.5, …, 2 중 하나', allowed);
+        T.check('영행렬은 나오지 않음', !zero);
+        T.check('시드가 다르면 대체로 다른 행렬', distinct.size > 1500, '서로 다른 행렬 ' + distinct.size + '개');
+      }
+    });
+  </script>
+</body>
+</html>
