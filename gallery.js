@@ -58,4 +58,16 @@ const SIMS = [
       ['2_linear_algebra', { ko: '9장', en: 'ch. 9' }],
     ],
   },
+  {
+    id: 'ridge-lasso',
+    title: { ko: 'Ridge와 Lasso: λ와 수축', en: 'Ridge and Lasso: λ and shrinkage' },
+    question: {
+      ko: 'λ를 키우면 계수는 어떻게 줄어들까? 왜 Lasso만 정확히 0이 될까?',
+      en: 'What happens to the coefficients as λ grows? Why does only Lasso set some exactly to 0?',
+    },
+    books: [
+      ['3_linear_regression', { ko: '5부', en: 'part 5' }],
+      ['4_Bayes', { ko: 'W8 (수축)', en: 'W8 (shrinkage)' }],
+    ],
+  },
 ];

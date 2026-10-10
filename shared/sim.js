@@ -145,6 +145,11 @@
   /* ---------- 그래프 글자 크기: 본문(rem)에 맞춤 → 글자 크게 보기에서도 같이 커짐 ---------- */
   // 그래프 색은 style.css의 변수에서 읽음 (SVG 속성에는 var(--x)를 쓸 수 없어서)
   EduSim.css = function (name) { return getComputedStyle(html).getPropertyValue(name).trim(); };
+  // 요소의 안쪽 폭(padding 제외). 카드 안에 그림 폭을 맞출 때
+  EduSim.contentWidth = function (el) {
+    var cs = getComputedStyle(el);
+    return el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  };
   EduSim.rem = function () { return parseFloat(getComputedStyle(html).fontSize) || 16; };
   EduSim.plotStyle = function () {
     return { fontSize: Math.round(EduSim.rem() * 0.8) + 'px', fontFamily: 'inherit', color: 'var(--ink-2)' };

@@ -11,6 +11,7 @@
 | 사전분포 × 가능도 → 사후분포 | [`sims/prior-posterior/`](https://kkonoo.github.io/edu_sims/sims/prior-posterior/) | 베이즈 W1–3 |
 | 2×2 행렬과 고유벡터 | [`sims/matrix-2x2/`](https://kkonoo.github.io/edu_sims/sims/matrix-2x2/) | 선형대수 2·11·12장 |
 | 최소제곱: 잔차·이상치·leverage | [`sims/least-squares/`](https://kkonoo.github.io/edu_sims/sims/least-squares/) | 회귀 1·3부, 선형대수 9장 |
+| Ridge와 Lasso: λ와 수축 | [`sims/ridge-lasso/`](https://kkonoo.github.io/edu_sims/sims/ridge-lasso/) | 회귀 5부, 베이즈 W8 |
 
 ---
 
@@ -126,6 +127,18 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 점을 끌어 만든 배치는 주소창 URL에 그대로 들어 있으니, 그 URL에 `&embed=1`을 붙여 교재에 넣으면 됩니다.
 
+**Ridge와 Lasso** (`sims/ridge-lasso/`)
+
+| 파라미터 | 뜻 | 값 | 기본 |
+|---|---|---|---|
+| `method` | 방법 | `ridge`, `lasso` | `lasso` |
+| `loglam` | log₁₀ λ | −3 ~ 2 (0.05 단위) | −1 (λ = 0.1) |
+| `rho` | 예측변수끼리의 상관 | 0 ~ 0.9 (0.05 단위) | 0.3 |
+| `truth` | 참값 표시 | `on`, `off` | `on` |
+| `seed` | 데이터 시드 | 1–99999 | 1 |
+
+예: 관찰 과제 2 "Ridge, 큰 λ" → `?embed=1&method=ridge&loglam=1`
+
 범위를 벗어난 값은 가장 가까운 허용값(또는 기본값)으로 바뀝니다.
 
 ---
@@ -194,6 +207,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
   - `sims/prior-posterior/test.html` (41개): `lgamma`·`dbeta`·`pbeta`·`qbeta`, 켤레 공식, 신용구간 포함률
   - `sims/matrix-2x2/test.html` (32개): 고유값·고유벡터(R `eigen`), 복소·중근·전단·cI 구분, tr·det 관계, 무작위 행렬 3,000개
   - `sims/least-squares/test.html` (25개): R `lm`의 계수·R²·σ̂·`hatvalues`·`rstandard`·`cooks.distance`, 잔차의 직교성, Cook 거리 정의
+  - `sims/ridge-lasso/test.html` (29개): Ridge 닫힌 해(R), Lasso의 KKT 조건·직교 설계의 정확한 해·λ 극한, 경로의 단조성, 기하 그림의 접점 (glmnet은 이 작업 환경에서 설치할 수 없어 비교하지 않음)
 
 ## 구조
 
@@ -207,6 +221,7 @@ sims/multiple-testing/      다중검정과 FDR (index.html, text.js, model.js, 
 sims/prior-posterior/       사전분포 × 가능도 → 사후분포 (같은 구성)
 sims/matrix-2x2/            2×2 행렬과 고유벡터 (같은 구성, 차트 라이브러리 없이 SVG)
 sims/least-squares/         최소제곱: 잔차·이상치·leverage (같은 구성)
+sims/ridge-lasso/           Ridge와 Lasso: λ와 수축 (같은 구성)
 quarto/edu-sims-resize.html Quarto include용 높이 자동 조절 스크립트
 .nojekyll                   GitHub Pages가 _template 폴더도 그대로 서빙하도록
 ```

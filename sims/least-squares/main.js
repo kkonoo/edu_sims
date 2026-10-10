@@ -36,7 +36,7 @@ function selectedIndex(f, n) {
 function drawScatter(sim, s, pts, f, si, C) {
   const el = $('scatter');
   const rem = EduSim.rem();
-  const W = Math.min(el.parentElement.clientWidth - 2, Math.round(rem * 34));
+  const W = Math.min(EduSim.contentWidth(el.parentElement), Math.round(rem * 34));
   el.style.width = W + 'px';
   el.style.margin = '0 auto';
   const ml = Math.round(rem * 2.2), mr = Math.round(rem * 0.9), mt = Math.round(rem * 0.9), mb = Math.round(rem * 2.4);
