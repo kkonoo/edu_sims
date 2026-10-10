@@ -74,11 +74,6 @@
       seed: '시드',
       toDark: '어둡게 보기',
       toLight: '밝게 보기',
-      cdnTitle: '그래프를 불러오지 못했어요',
-      cdnBody: '그래프 라이브러리(<code>cdn.jsdelivr.net</code>)에 연결하지 못해 그래프가 비어 보일 수 있어요. ' +
-        '인터넷 연결을 확인해 보세요. 학교·병원 등 기관 네트워크가 이 주소를 막는 경우가 많으니, ' +
-        '휴대폰 데이터나 다른 네트워크에서 열거나 전산 담당자에게 <code>cdn.jsdelivr.net</code> 허용을 요청해 주세요.',
-      cdnRetry: '다시 시도',
       footer: '수업용 인터랙티브 시뮬레이터',
     },
     en: {
@@ -92,11 +87,6 @@
       seed: 'seed',
       toDark: 'Dark mode',
       toLight: 'Light mode',
-      cdnTitle: 'The charts could not be loaded',
-      cdnBody: 'The chart library (<code>cdn.jsdelivr.net</code>) could not be reached, so the charts may be empty. ' +
-        'Check your internet connection. School and hospital networks often block this address: ' +
-        'try mobile data or another network, or ask your IT staff to allow <code>cdn.jsdelivr.net</code>.',
-      cdnRetry: 'Try again',
       footer: 'Interactive simulators for teaching',
     },
   };
@@ -378,29 +368,13 @@
       }, 250);
     }
 
-    // 그래프 라이브러리(CDN)를 불렀는데 없으면 안내를 띄우고, 그릴 수 있는 것만 그림 (그리다 멈춰도 나머지 화면은 살림)
-    var libsMissing = !!document.querySelector('script[src*="cdn.jsdelivr.net"]') && (typeof window.Plot === 'undefined' || typeof window.d3 === 'undefined');
-    if (libsMissing) {
-      var notice = document.createElement('div');
-      notice.className = 'cdn-notice';
-      notice.setAttribute('role', 'alert');
-      notice.innerHTML = '<b data-t="cdnTitle"></b><p data-t-html="cdnBody"></p>' +
-        '<button type="button" class="btn btn-sm" data-t="cdnRetry"></button>';
-      notice.querySelector('button').addEventListener('click', function () { location.reload(); });
-      var main = document.querySelector('main') || document.body;
-      var q1 = main.querySelector('.sim-question');
-      if (q1) q1.after(notice); else main.prepend(notice);
-    }
-
     var pending = false;
     function schedule() {
       if (pending) return;
       pending = true;
       requestAnimationFrame(function () {
         pending = false;
-        if (!opts.render) return;
-        if (!libsMissing) { opts.render(state, sim); return; }
-        try { opts.render(state, sim); } catch (e) { /* Plot·d3가 없어 그래프에서 멈춤 — 위의 안내가 이유를 알려 줌 */ }
+        if (opts.render) opts.render(state, sim);
       });
     }
 

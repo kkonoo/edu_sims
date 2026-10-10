@@ -3,9 +3,8 @@
 수업용 인터랙티브 시뮬레이터 모음입니다. 슬라이더를 움직이면 결과가 바로 바뀌고, Quarto 교재에 iframe으로 끼워 넣어 씁니다.
 
 - 사이트: <https://kkonoo.github.io/edu_sims/>
-- 빌드 없음: HTML/CSS/JS 그대로. 차트만 CDN의 [Observable Plot](https://observablehq.com/plot/) 0.6.17 (+ d3 7.9.0)
+- 빌드 없음: HTML/CSS/JS 그대로. 차트는 [Observable Plot](https://observablehq.com/plot/) 0.6.17 (+ d3 7.9.0)이고, 두 파일을 `shared/vendor/`에 넣어 두어 CDN이 막힌 학교·병원 네트워크나 인터넷이 없는 곳에서도 그래프가 그려집니다.
 - 라이트·다크 모드: 헤더 오른쪽의 반쯤 칠한 원 버튼. 처음에는 운영체제 설정을 따르고, 버튼으로 고르면 브라우저에 저장되어 사이트 전체에 적용됩니다.
-- 학교·병원 네트워크처럼 CDN(`cdn.jsdelivr.net`)이 막혀 그래프 라이브러리를 못 받으면, 질문 아래에 이유와 해결 방법을 알리는 안내가 뜹니다(표·숫자·조작은 그대로 동작).
 
 | 시뮬레이터 | 주소 | 쓰이는 교재 |
 |---|---|---|
@@ -259,7 +258,7 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 
 ## 로컬에서 보기 · 테스트
 
-- 파일을 더블클릭해서 열어도 됩니다(그래프 라이브러리는 CDN에서 받으므로 인터넷은 필요. 연결이 안 되면 안내가 뜹니다).
+- 파일을 더블클릭해서 열어도 됩니다(인터넷 없이도 동작).
 - 또는 저장소 폴더에서 `python3 -m http.server` 후 <http://localhost:8000>
 - 테스트: 시뮬레이터 폴더의 `test.html`을 열면 맨 위에 결과가 나옵니다. 기댓값은 R 4.5.1에서 뽑았고, 그 R 코드가 각 테스트 파일 주석에 있습니다.
   - `sims/multiple-testing/test.html` (38개): p값, BH 보정값(R `p.adjust`), 몬테카를로 FDR·FWER
@@ -277,8 +276,9 @@ https://kkonoo.github.io/edu_sims/sims/multiple-testing/?embed=1&lang=ko&m=1000&
 ```
 index.html, gallery.js      갤러리와 등록부(교재 목록 포함)
 shared/style.css            공통 레이아웃·조작·색 (라이트·다크 두 벌)
-shared/sim.js               공통 모듈 EduSim: URL 상태, 언어, 테마, 난수, 시드, 재생, embed 높이 알림, CDN 차단 안내
+shared/sim.js               공통 모듈 EduSim: URL 상태, 언어, 테마, 난수, 시드, 재생, embed 높이 알림
 shared/test.js              브라우저 테스트 도우미
+shared/vendor/              Observable Plot 0.6.17 · d3 7.9.0 (npm 배포 파일 그대로, ISC 라이선스 LICENSE-*)
 sims/_template/             새 시뮬레이터용 틀
 sims/multiple-testing/      다중검정과 FDR (index.html, text.js, model.js, main.js, test.html)
 sims/prior-posterior/       사전분포 × 가능도 → 사후분포 (같은 구성)

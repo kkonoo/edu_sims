@@ -115,16 +115,6 @@ button, input { font: inherit; color: inherit; }
 .theme-btn:focus-visible { outline: 2px solid var(--c1); outline-offset: 1px; }
 .theme-btn svg { width: 1.6rem; height: 1.6rem; display: block; }
 
-/* 그래프 라이브러리를 못 불러왔을 때 (CDN이 막힌 네트워크 등) */
-.cdn-notice {
-  background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line);
-  border-radius: var(--radius); padding: 0.8rem 1rem; font-size: 0.95rem;
-}
-.cdn-notice b { display: block; margin-bottom: 0.2rem; }
-.cdn-notice p { margin: 0 0 0.6rem; }
-.cdn-notice code { font-size: 0.9em; }
-.cdn-notice .btn { color: var(--ink); }
-
 .site-footer {
   max-width: 75rem; margin: 2rem auto 0; padding: 1rem;
   color: var(--muted); font-size: 0.875rem;
