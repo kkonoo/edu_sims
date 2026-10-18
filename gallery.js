@@ -4,6 +4,8 @@
 // lang은 교재의 언어 — 교재에 끼워 넣을 때 ?lang= 값을 고르는 기준입니다.
 const BOOKS = {
   '1_Basic_Statistics': { name: { ko: '기초통계', en: 'Basic statistics' }, lang: 'ko' },
+  '1_Basic_Machine_Learning': { name: { ko: '기초 ML', en: 'Basic ML' }, lang: 'ko' },
+  BI_for_MD_PhD_KNUmed: { name: { ko: 'RNA-seq 분석', en: 'RNA-seq analysis' }, lang: 'en' },
   '2_linear_algebra': { name: { ko: '선형대수', en: 'Linear algebra' }, lang: 'ko' },
   '3_linear_regression': { name: { ko: '회귀', en: 'Regression' }, lang: 'ko' },
   '4_Bayes': { name: { ko: '베이즈', en: 'Bayes' }, lang: 'ko' },
@@ -28,6 +30,7 @@ const SIMS = [
       ['BI_for_Biomed_KNUmed', { ko: '핵심 주제', en: 'core topic' }],
       ['3_linear_regression', { ko: '변수선택', en: 'variable selection' }],
       ['advanced_BI_for_MD_PhD_KNUmed', 'GWAS'],
+      ['BI_for_MD_PhD_KNUmed', 'W8'],
     ],
   },
   {
@@ -37,7 +40,7 @@ const SIMS = [
       ko: '데이터를 보면 믿음은 어떻게 바뀔까?',
       en: 'How does what we believe change once we see data?',
     },
-    books: [['1_Basic_Statistics', { ko: '11장', en: 'ch. 11' }], ['4_Bayes', 'W1–3']],
+    books: [['1_Basic_Statistics', { ko: '11장', en: 'ch. 11' }], ['4_Bayes', 'W1–3'], ['1_Basic_Machine_Learning', { ko: '11장', en: 'ch. 11' }]],
   },
   {
     id: 'matrix-2x2',
@@ -57,8 +60,9 @@ const SIMS = [
     },
     books: [
       ['1_Basic_Statistics', { ko: '9장', en: 'ch. 9' }],
-      ['3_linear_regression', { ko: '1·3부', en: 'parts 1, 3' }],
+      ['3_linear_regression', { ko: '1·3·6부', en: 'parts 1, 3, 6' }],
       ['2_linear_algebra', { ko: '9장', en: 'ch. 9' }],
+      ['1_Basic_Machine_Learning', { ko: '5장', en: 'ch. 5' }],
     ],
   },
   {
@@ -71,6 +75,8 @@ const SIMS = [
     books: [
       ['3_linear_regression', { ko: '5부', en: 'part 5' }],
       ['4_Bayes', { ko: 'W8 (수축)', en: 'W8 (shrinkage)' }],
+      ['1_Basic_Machine_Learning', { ko: '6·11장', en: 'ch. 6, 11' }],
+      ['2_linear_algebra', { ko: '9장', en: 'ch. 9' }],
     ],
   },
   {
@@ -82,9 +88,10 @@ const SIMS = [
     },
     books: [
       ['1_Basic_Statistics', { ko: '9장', en: 'ch. 9' }],
-      ['BI_for_Biomed_KNUmed', { ko: '핵심 주제', en: 'core topic' }],
+      ['BI_for_Biomed_KNUmed', { ko: 'W1·2·5·7', en: 'W1, 2, 5, 7' }],
       ['advanced_BI_for_MD_PhD_KNUmed', { ko: '연구설계', en: 'study design' }],
       ['3_linear_regression', { ko: '3부', en: 'part 3' }],
+      ['BI_for_MD_PhD_KNUmed', 'W6'],
     ],
   },
   {
@@ -98,6 +105,8 @@ const SIMS = [
       ['2_linear_algebra', { ko: '13·15장', en: 'ch. 13, 15' }],
       ['BI_for_Biomed_KNUmed', 'scRNA'],
       ['advanced_BI_for_MD_PhD_KNUmed', 'single-cell'],
+      ['1_Basic_Machine_Learning', { ko: '13장', en: 'ch. 13' }],
+      ['BI_for_MD_PhD_KNUmed', 'W6'],
     ],
   },
   {
@@ -116,6 +125,6 @@ const SIMS = [
       ko: '뭉침 계수 0.57은 큰 값일까? 차수가 똑같은 무작위 네트워크와 비교하면?',
       en: 'Is a clustering coefficient of 0.57 large? Compared with random networks that have exactly the same degrees?',
     },
-    books: [['4_graphs', { ko: '04장', en: 'ch. 4' }]],
+    books: [['4_graphs', { ko: '4·5장', en: 'ch. 4, 5' }], ['advanced_BI_for_MD_PhD_KNUmed', 'W12']],
   },
 ];
