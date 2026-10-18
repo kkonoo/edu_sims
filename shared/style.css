@@ -102,18 +102,21 @@ button, input { font: inherit; color: inherit; }
 .site-header .crumb { color: var(--ink-2); flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .site-header .crumb::before { content: "›"; margin-right: 0.5rem; color: var(--muted); }
-.site-header .tools { display: flex; gap: 0.5rem; margin-left: auto; }
-.site-header .seg label { flex: none; }
-.site-header .seg span { padding: 0.3rem 0.6rem; overflow: visible; }
-/* 라이트·다크 바꾸기: 반쯤 칠한 원 아이콘 버튼 */
-.theme-btn {
+.site-header .tools { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+/* 언어·테마 타일: 흰 표면 + 얇은 테두리 (수업 교재 사이트의 타일과 같은 모양).
+   언어 타일은 누르면 바뀔 언어를, 테마 타일은 누르면 바뀔 모드를 보여 줌 */
+.ctl-tile {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 2.5rem; height: 2.5rem; padding: 0; border: 0; border-radius: 50%;
-  background: transparent; color: var(--ink); cursor: pointer;
+  width: 2.5rem; height: 2.5rem; padding: 0; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font-size: 0.9rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1; cursor: pointer;
 }
-.theme-btn:hover { background: var(--line); }
-.theme-btn:focus-visible { outline: 2px solid var(--c1); outline-offset: 1px; }
-.theme-btn svg { width: 1.6rem; height: 1.6rem; display: block; }
+.ctl-tile:hover { background: var(--page); }
+.ctl-tile:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+.ctl-tile svg { width: 1.2rem; height: 1.2rem; display: block; }
+.theme-btn .ico-sun { display: none; }
+html[data-theme="dark"] .theme-btn .ico-moon { display: none; }
+html[data-theme="dark"] .theme-btn .ico-sun { display: block; }
 
 .site-footer {
   max-width: 75rem; margin: 2rem auto 0; padding: 1rem;

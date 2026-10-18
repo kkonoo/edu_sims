@@ -74,6 +74,7 @@
       seed: '시드',
       toDark: '어둡게 보기',
       toLight: '밝게 보기',
+      toOtherLang: 'English로 보기',
       footer: '수업용 인터랙티브 시뮬레이터',
     },
     en: {
@@ -87,6 +88,7 @@
       seed: 'seed',
       toDark: 'Dark mode',
       toLight: 'Light mode',
+      toOtherLang: '한국어로 보기',
       footer: 'Interactive simulators for teaching',
     },
   };
@@ -231,23 +233,21 @@
         '<a class="brand" href="' + home + (EduSim.lang === 'en' ? '?lang=en' : '') + '">edu_sims</a>' +
         '<span class="crumb" data-t="title"></span>' +
         '<div class="tools">' +
-        '<div class="seg" role="radiogroup" aria-label="Language">' +
-        '<label><input type="radio" name="__lang" value="ko"><span>KO</span></label>' +
-        '<label><input type="radio" name="__lang" value="en"><span>EN</span></label></div>' +
-        '<button type="button" class="theme-btn" data-action="theme">' +
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>' +
-        '<path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>' +
+        // 언어 타일: 누르면 바뀔 언어 하나만 보임 (테마 타일과 같은 방식)
+        '<button type="button" class="ctl-tile lang-btn" data-action="lang"></button>' +
+        // 테마 타일: 라이트에선 달, 다크에선 해 (Lucide 선 아이콘; CSS가 하나만 보여 줌)
+        '<button type="button" class="ctl-tile theme-btn" data-action="theme">' +
+        '<svg class="ico-moon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>' +
+        '<svg class="ico-sun" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>' +
+        '</button>' +
         '</div>';
       document.body.prepend(header);
       var footer = document.createElement('footer');
       footer.className = 'site-footer';
       footer.innerHTML = '<span data-t="footer"></span> · <a href="https://github.com/kkonoo/edu_sims">GitHub</a>';
       document.body.append(footer);
-
-      header.querySelectorAll('input[name="__lang"]').forEach(function (el) {
-        el.checked = el.value === EduSim.lang;
-        el.addEventListener('change', function () { setLang(el.value); });
-      });
     }
 
     /* 조작 요소 연결 */
@@ -305,6 +305,7 @@
       if (!btn) return;
       if (btn.dataset.action === 'reroll' && useSeed) set({ seed: EduSim.newSeed(state.seed) });
       if (btn.dataset.action === 'theme') setTheme(EduSim.theme === 'dark' ? 'light' : 'dark', true);
+      if (btn.dataset.action === 'lang') setLang(EduSim.lang === 'ko' ? 'en' : 'ko');
       if (btn.dataset.action === 'play') setPlaying(!playing);
       if (btn.dataset.action === 'rewind' && play) {
         var p = {}; p[play.param] = bound(params[play.param].min, state); carry = 0; set(p);
@@ -337,6 +338,11 @@
       document.querySelectorAll('[data-action="theme"]').forEach(function (el) { // 버튼 이름 = 누르면 바뀔 모드
         var label = t(EduSim.theme === 'dark' ? 'toLight' : 'toDark');
         el.setAttribute('aria-label', label); el.title = label;
+      });
+      document.querySelectorAll('[data-action="lang"]').forEach(function (el) { // 버튼 글자 = 누르면 바뀔 언어
+        var other = EduSim.lang === 'ko' ? 'en' : 'ko';
+        el.textContent = other.toUpperCase(); el.lang = other;
+        el.setAttribute('aria-label', t('toOtherLang')); el.title = t('toOtherLang');
       });
       document.querySelectorAll('[data-action="play"]').forEach(function (el) { el.textContent = t(playing ? 'pause' : 'play'); });
     }
