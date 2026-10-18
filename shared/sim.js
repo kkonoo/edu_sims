@@ -453,6 +453,13 @@
     if (darkQuery && !urlTheme && !EduSim.embed && darkQuery.addEventListener) {
       darkQuery.addEventListener('change', function () { if (!storedTheme()) setTheme(systemTheme(), false); });
     }
+    // embed: 교재 페이지가 라이트/다크를 바꾸면 그 테마를 따라감 (edu-sims-resize.html이 보내는 메시지)
+    if (EduSim.embed && window.parent !== window && !urlTheme) {   // 주소에 theme을 주면 그대로 고정
+      window.addEventListener('message', function (e) {
+        var d = e.data;
+        if (d && d.type === 'edu-sims:theme' && (d.theme === 'light' || d.theme === 'dark') && d.theme !== EduSim.theme) setTheme(d.theme, false);
+      });
+    }
 
     // 그래프 영역 폭이 바뀌면(창 크기, 회전, 글자 크게) 다시 그림. 높이 변화엔 반응하지 않음(무한 반복 방지)
     var figs = document.querySelector('.sim-figs');

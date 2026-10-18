@@ -22,15 +22,15 @@
 
 ## Quarto 교재에 끼워 넣기
 
-### 1. 높이 자동 조절 스크립트 등록 (교재 프로젝트마다 한 번)
+### 1. 높이 자동 조절·테마 전달 스크립트 등록 (교재 프로젝트마다 한 번)
 
-1. 이 저장소의 [`quarto/edu-sims-resize.html`](quarto/edu-sims-resize.html)을 교재 프로젝트 폴더(`_quarto.yml` 옆)에 복사합니다.
+1. 이 저장소의 [`quarto/edu-sims-resize.html`](quarto/edu-sims-resize.html)을 교재 프로젝트의 `assets/`에 복사합니다.
 2. `_quarto.yml`에 추가합니다.
 
    ```yaml
    format:
      html:
-       include-after-body: edu-sims-resize.html
+       include-after-body: assets/edu-sims-resize.html
    ```
 
    이미 `include-after-body`를 쓰고 있다면 목록으로 씁니다.
@@ -38,7 +38,7 @@
    ```yaml
        include-after-body:
          - 기존-파일.html
-         - edu-sims-resize.html
+         - assets/edu-sims-resize.html
    ```
 
 시뮬레이터는 내용 높이가 바뀔 때마다(설명을 펼치거나 화면 폭이 바뀔 때) 부모 페이지에 알리고, 이 스크립트가 **그 메시지를 보낸 iframe의 높이만** 바꿉니다. 스크립트가 없어도 iframe은 보이지만 높이가 아래 `height` 값으로 고정됩니다.
@@ -57,7 +57,7 @@
 
 - `embed=1`: 헤더·푸터를 숨기고 본체만 보여 줍니다.
 - `lang=ko` / `lang=en`: 영어 교재에는 `lang=en`.
-- 교재에 끼워 넣으면 교재(라이트 테마)에 맞춰 늘 라이트로 보입니다. 다크 배경 페이지에 넣을 때만 `&theme=dark`를 붙이세요.
+- 교재에 끼워 넣으면 처음엔 라이트로 뜨고, `edu-sims-resize.html`이 교재의 라이트/다크 전환을 시뮬레이터에 전달해 같이 바뀝니다. 항상 한 테마로 고정하려면 `&theme=dark` 또는 `&theme=light`를 붙이세요.
 - `::: {.column-page}`: 본문(약 800px)보다 넓게(약 1000px) 펼쳐서 조작 패널과 그래프가 나란히 보이게 합니다. 빼도 동작합니다.
 - `height: 1300px`: 스크립트가 실제 높이로 바꾸기 전의 초기값입니다.
 
