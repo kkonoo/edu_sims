@@ -8,12 +8,12 @@
 
 | 시뮬레이터 | 주소 | 쓰이는 교재 |
 |---|---|---|
-| 다중검정과 FDR | [`sims/multiple-testing/`](https://kkonoo.github.io/edu_sims/sims/multiple-testing/) | BI 입문(핵심 주제), 회귀(변수선택), 고급 BI(GWAS) |
-| 사전분포 × 가능도 → 사후분포 | [`sims/prior-posterior/`](https://kkonoo.github.io/edu_sims/sims/prior-posterior/) | 베이즈 W1–3 |
+| 다중검정과 FDR | [`sims/multiple-testing/`](https://kkonoo.github.io/edu_sims/sims/multiple-testing/) | 기초통계 10장, BI 입문(핵심 주제), 회귀(변수선택), 고급 BI(GWAS) |
+| 사전분포 × 가능도 → 사후분포 | [`sims/prior-posterior/`](https://kkonoo.github.io/edu_sims/sims/prior-posterior/) | 기초통계 11장, 베이즈 W1–3 |
 | 2×2 행렬과 고유벡터 | [`sims/matrix-2x2/`](https://kkonoo.github.io/edu_sims/sims/matrix-2x2/) | 선형대수 2·11·12장 |
-| 최소제곱: 잔차·이상치·leverage | [`sims/least-squares/`](https://kkonoo.github.io/edu_sims/sims/least-squares/) | 회귀 1·3부, 선형대수 9장 |
+| 최소제곱: 잔차·이상치·leverage | [`sims/least-squares/`](https://kkonoo.github.io/edu_sims/sims/least-squares/) | 기초통계 9장, 회귀 1·3부, 선형대수 9장 |
 | Ridge와 Lasso: λ와 수축 | [`sims/ridge-lasso/`](https://kkonoo.github.io/edu_sims/sims/ridge-lasso/) | 회귀 5부, 베이즈 W8 |
-| 교란변수와 배치효과 | [`sims/confounding/`](https://kkonoo.github.io/edu_sims/sims/confounding/) | BI 입문(핵심 주제), 고급 BI(연구설계), 회귀 |
+| 교란변수와 배치효과 | [`sims/confounding/`](https://kkonoo.github.io/edu_sims/sims/confounding/) | 기초통계 9장, BI 입문(핵심 주제), 고급 BI(연구설계), 회귀 3부 |
 | PCA·SVD: 저랭크 근사 | [`sims/pca-svd/`](https://kkonoo.github.io/edu_sims/sims/pca-svd/) | 선형대수 13·15장, BI 입문(scRNA), 고급 BI(single-cell) |
 | MCMC: 제안 폭과 체인의 움직임 | [`sims/mcmc/`](https://kkonoo.github.io/edu_sims/sims/mcmc/) | 베이즈 W5–6 |
 | 네트워크 null model: 차수 보존 재배선 | [`sims/network-null/`](https://kkonoo.github.io/edu_sims/sims/network-null/) | 그래프 04장 |
